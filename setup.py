@@ -36,13 +36,45 @@ NVCC_FLAGS = [
     "-Xptxas=-v",
     "-diag-suppress=174",
 ]
->>>>>>ABI = 1 if torch._C._GLIBCXX_USE_CXX11_ABI else 0
+# Get C++ ABI compatibility for PaddlePaddle
+try:
+    import paddle
+    # PaddlePaddle uses the same ABI detection as PyTorch
+    ABI = 1 if hasattr(paddle, '_C') and hasattr(paddle._C, '_GLIBCXX_USE_CXX11_ABI') and paddle._C._GLIBCXX_USE_CXX11_ABI else 0
+except:
+    # Fallback: try to detect from environment or use default
+    import sys
+    ABI = 1 if sys.version_info >= (3, 8) else 0
 CXX_FLAGS += [f"-D_GLIBCXX_USE_CXX11_ABI={ABI}"]
 NVCC_FLAGS += [f"-D_GLIBCXX_USE_CXX11_ABI={ABI}"]
+# Get CUDA_HOME for PaddlePaddle
+CUDA_HOME = os.environ.get('CUDA_HOME') or os.environ.get('CUDA_PATH')
 if CUDA_HOME is None:
-    raise RuntimeError(
-        "Cannot find CUDA_HOME. CUDA must be available to build the package."
-    )
+    # Try to find CUDA installation in common locations
+    possible_cuda_paths = [
+        '/usr/local/cuda',
+        '/usr/local/cuda-12.0',
+        '/usr/local/cuda-12.1', 
+        '/usr/local/cuda-12.2',
+        '/usr/local/cuda-12.3',
+        '/usr/local/cuda-12.4',
+        '/opt/cuda',
+        '/opt/cuda-12.0',
+        '/opt/cuda-12.1',
+        '/opt/cuda-12.2', 
+        '/opt/cuda-12.3',
+        '/opt/cuda-12.4'
+    ]
+    for path in possible_cuda_paths:
+        if os.path.exists(path) and os.path.exists(os.path.join(path, 'bin', 'nvcc')):
+            CUDA_HOME = path
+            break
+    
+    if CUDA_HOME is None:
+        raise RuntimeError(
+            "Cannot find CUDA_HOME. CUDA must be available to build the package. "
+            "Please set CUDA_HOME environment variable or install CUDA in a standard location."
+        )
 
 
 def get_nvcc_cuda_version(cuda_dir: str) -> Version:
@@ -59,28 +91,30 @@ def get_nvcc_cuda_version(cuda_dir: str) -> Version:
     return nvcc_cuda_version
 
 
-def get_torch_arch_list() -> Set[str]:
-    env_arch_list = os.environ.get("TORCH_CUDA_ARCH_LIST", None)
+def get_cuda_arch_list() -> Set[str]:
+    """Get CUDA architecture list from environment variables or PaddlePaddle."""
+    # Check for PaddlePaddle specific environment variable first
+    env_arch_list = os.environ.get("PADDLE_CUDA_ARCH_LIST") or os.environ.get("TORCH_CUDA_ARCH_LIST", None)
     if env_arch_list is None:
         return set()
-    torch_arch_list = set(env_arch_list.replace(" ", ";").split(";"))
-    if not torch_arch_list:
+    arch_list = set(env_arch_list.replace(" ", ";").split(";"))
+    if not arch_list:
         return set()
     valid_archs = SUPPORTED_ARCHS.union({(s + "+PTX") for s in SUPPORTED_ARCHS})
-    arch_list = torch_arch_list.intersection(valid_archs)
-    if not arch_list:
+    filtered_arch_list = arch_list.intersection(valid_archs)
+    if not filtered_arch_list:
         raise RuntimeError(
-            f"None of the CUDA architectures in `TORCH_CUDA_ARCH_LIST` env variable ({env_arch_list}) is supported. Supported CUDA architectures are: {valid_archs}."
+            f"None of the CUDA architectures in environment variable ({env_arch_list}) is supported. Supported CUDA architectures are: {valid_archs}."
         )
-    invalid_arch_list = torch_arch_list - valid_archs
+    invalid_arch_list = arch_list - valid_archs
     if invalid_arch_list:
         warnings.warn(
-            f"Unsupported CUDA architectures ({invalid_arch_list}) are excluded from the `TORCH_CUDA_ARCH_LIST` env variable ({env_arch_list}). Supported CUDA architectures are: {valid_archs}."
+            f"Unsupported CUDA architectures ({invalid_arch_list}) are excluded from the environment variable ({env_arch_list}). Supported CUDA architectures are: {valid_archs}."
         )
-    return arch_list
+    return filtered_arch_list
 
 
-compute_capabilities = get_torch_arch_list()
+compute_capabilities = get_cuda_arch_list()
 if not compute_capabilities:
     device_count = paddle.device.cuda.device_count()
     for i in range(device_count):
