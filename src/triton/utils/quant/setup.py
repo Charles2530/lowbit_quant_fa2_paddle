@@ -1,0 +1,32 @@
+import paddle
+import setuptools
+
+extra_compile_args = {
+    "cxx": ["-g", "-O3", "-fopenmp", "-lgomp", "-std=c++17", "-DENABLE_BF16"],
+    "nvcc": [
+        "-O3",
+        "-std=c++17",
+        "-DENABLE_BF16",
+        "-U__CUDA_NO_HALF_OPERATORS__",
+        "-U__CUDA_NO_HALF_CONVERSIONS__",
+        "-U__CUDA_NO_BFLOAT16_OPERATORS__",
+        "-U__CUDA_NO_BFLOAT16_CONVERSIONS__",
+        "-U__CUDA_NO_BFLOAT162_OPERATORS__",
+        "-U__CUDA_NO_BFLOAT162_CONVERSIONS__",
+        "--expt-relaxed-constexpr",
+        "--expt-extended-lambda",
+        "--use_fast_math",
+        "--threads=8",
+    ],
+}
+paddle.utils.cpp_extension.setup(
+    name="kivi_gemv",
+    packages=setuptools.find_packages(),
+    ext_modules=[
+        paddle.utils.cpp_extension.CUDAExtension(
+            sources=["csrc/pybind.cpp", "csrc/gemv_cuda.cu"],
+            extra_compile_args=extra_compile_args,
+        )
+    ],
+    install_requires=["torch"],
+)
