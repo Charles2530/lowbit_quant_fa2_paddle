@@ -42,11 +42,11 @@ print(f"is_causal: {is_causal}")
 for seq_len in {128, 512, 1024, 2048}:
     flops = 4 * head * batch * headdim * seq_len * seq_len / (2 if is_causal else 1)
     q = paddle.randint(
-        low=-95, high=95, shape=(batch, seq_len, head, headdim), dtype=paddle.int8
-    ).cuda()
+        low=-95, high=95, shape=(batch, seq_len, head, headdim), dtype=paddle.int32
+    ).astype(paddle.int8).cuda()
     k = paddle.randint(
-        low=-95, high=95, shape=(batch, seq_len, head, headdim), dtype=paddle.int8
-    ).cuda()
+        low=-95, high=95, shape=(batch, seq_len, head, headdim), dtype=paddle.int32
+    ).astype(paddle.int8).cuda()
     o = paddle.empty(batch, seq_len, head, headdim, dtype=paddle.float16).cuda()
     vm = paddle.randn(batch, head, headdim, dtype=paddle.float32).cuda()
     v_scale = paddle.randn(batch, head, headdim, dtype=paddle.float32).cuda()
@@ -97,11 +97,11 @@ print(f"is_causal: {is_causal}")
 for seq_len in {128, 512, 1024, 2048}:
     flops = 4 * head * batch * headdim * seq_len * seq_len / (2 if is_causal else 1)
     q = paddle.randint(
-        low=-95, high=95, shape=(batch, seq_len, head, headdim), dtype=paddle.int8
-    ).cuda()
+        low=-95, high=95, shape=(batch, seq_len, head, headdim), dtype=paddle.int32
+    ).astype(paddle.int8).cuda()
     k = paddle.randint(
-        low=-95, high=95, shape=(batch, seq_len, head, headdim), dtype=paddle.int8
-    ).cuda()
+        low=-95, high=95, shape=(batch, seq_len, head, headdim), dtype=paddle.int32
+    ).astype(paddle.int8).cuda()
     o = paddle.empty(batch, seq_len, head, headdim, dtype=paddle.float16).cuda()
     vm = paddle.randn(batch, head, headdim, dtype=paddle.float32).cuda()
     v_scale = paddle.randn(batch, head, headdim, dtype=paddle.float32).cuda()

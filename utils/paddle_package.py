@@ -165,14 +165,14 @@ def benchmark_triton_attention_int8_custom(
             low=-100,
             high=100,
             shape=(batch_size, num_heads, seq_len, head_dim),
-            dtype=q_dtype,
-        )
+            dtype=paddle.int32,
+        ).astype(q_dtype)
         prepare_k = paddle.randint(
             low=-100,
             high=100,
             shape=(batch_size, num_heads, seq_len, head_dim),
-            dtype=k_dtype,
-        )
+            dtype=paddle.int32,
+        ).astype(k_dtype)
         v = paddle.randn(
             batch_size, num_heads, seq_len, head_dim, dtype=v_dtype, device="cuda"
         )
@@ -261,14 +261,14 @@ def benchmark_triton_attention_int4_custom(
             low=-100,
             high=100,
             shape=(batch_size, num_heads, seq_len, head_dim),
-            dtype=q_dtype,
-        )
+            dtype=paddle.int32,
+        ).astype(q_dtype)
         prepare_k = paddle.randint(
             low=-100,
             high=100,
             shape=(batch_size, num_heads, seq_len, head_dim),
-            dtype=k_dtype,
-        )
+            dtype=paddle.int32,
+        ).astype(k_dtype)
         v = paddle.randn(
             batch_size, num_heads, seq_len, head_dim, dtype=v_dtype, device="cuda"
         )
@@ -360,14 +360,14 @@ def benchmark_triton_attention_q_int8_k_int4_custom(
             low=-100,
             high=100,
             shape=(batch_size, num_heads, seq_len, head_dim),
-            dtype=q_dtype,
-        )
+            dtype=paddle.int32,
+        ).astype(q_dtype)
         prepare_k = paddle.randint(
             low=-100,
             high=100,
             shape=(batch_size, num_heads, seq_len, head_dim),
-            dtype=k_dtype,
-        )
+            dtype=paddle.int32,
+        ).astype(k_dtype)
         v = paddle.randn(
             batch_size, num_heads, seq_len, head_dim, dtype=v_dtype, device="cuda"
         )
@@ -459,14 +459,14 @@ def benchmark_triton_attention_int2_custom(
             low=-100,
             high=100,
             shape=(batch_size, num_heads, seq_len, head_dim),
-            dtype=q_dtype,
-        )
+            dtype=paddle.int32,
+        ).astype(q_dtype)
         prepare_k = paddle.randint(
             low=-100,
             high=100,
             shape=(batch_size, num_heads, seq_len, head_dim),
-            dtype=k_dtype,
-        )
+            dtype=paddle.int32,
+        ).astype(k_dtype)
         v = paddle.randn(
             batch_size, num_heads, seq_len, head_dim, dtype=v_dtype, device="cuda"
         )
@@ -562,14 +562,14 @@ def benchmark_triton_attention_multi_kernel_custom(
             low=-100,
             high=100,
             shape=(batch_size, num_heads, seq_len, head_dim),
-            dtype=q_dtype,
-        )
+            dtype=paddle.int32,
+        ).astype(q_dtype)
         k = paddle.randint(
             low=-100,
             high=100,
             shape=(batch_size, num_heads, seq_len, head_dim),
-            dtype=k_dtype,
-        )
+            dtype=paddle.int32,
+        ).astype(k_dtype)
         v = paddle.randn(
             batch_size, num_heads, seq_len, head_dim, dtype=v_dtype, device="cuda"
         )

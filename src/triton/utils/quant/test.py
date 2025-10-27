@@ -225,8 +225,8 @@ def test_4d_qmatmul():
     query_len = 1
     BS, nh, T, D = 16, 32, 1024, 128
     group_size = 64
-    k = paddle.randint(low=0, high=10, shape=(BS, nh, T, D)).to(paddle.float16)
-    query_state = paddle.randint(low=0, high=5, shape=(BS, nh, query_len, D)).to(
+    k = paddle.randint(low=0, high=10, shape=(BS, nh, T, D), dtype=paddle.int32).to(paddle.float16)
+    query_state = paddle.randint(low=0, high=5, shape=(BS, nh, query_len, D), dtype=paddle.int32).to(
         paddle.float16
     )
     for bits in [8, 4, 2]:

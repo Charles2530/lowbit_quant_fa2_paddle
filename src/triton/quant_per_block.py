@@ -189,33 +189,25 @@ def per_block_int8(
     if tensor_layout == "HND":
         b, h_qo, qo_len, head_dim = q.shape
         _, h_kv, kv_len, _ = k.shape
-        stride_bz_q, stride_h_q, stride_seq_q = q.stride(0), q.stride(1), q.stride(2)
-        stride_bz_qo, stride_h_qo, stride_seq_qo = (
-            q_int8.stride(0),
-            q_int8.stride(1),
-            q_int8.stride(2),
-        )
-        stride_bz_k, stride_h_k, stride_seq_k = k.stride(0), k.stride(1), k.stride(2)
-        stride_bz_ko, stride_h_ko, stride_seq_ko = (
-            k_int8.stride(0),
-            k_int8.stride(1),
-            k_int8.stride(2),
-        )
+        q_strides = q.numpy().strides
+        k_strides = k.numpy().strides
+        q_int8_strides = q_int8.numpy().strides
+        k_int8_strides = k_int8.numpy().strides
+        stride_bz_q, stride_h_q, stride_seq_q = q_strides[0], q_strides[1], q_strides[2]
+        stride_bz_qo, stride_h_qo, stride_seq_qo = q_int8_strides[0], q_int8_strides[1], q_int8_strides[2]
+        stride_bz_k, stride_h_k, stride_seq_k = k_strides[0], k_strides[1], k_strides[2]
+        stride_bz_ko, stride_h_ko, stride_seq_ko = k_int8_strides[0], k_int8_strides[1], k_int8_strides[2]
     elif tensor_layout == "NHD":
         b, qo_len, h_qo, head_dim = q.shape
         _, kv_len, h_kv, _ = k.shape
-        stride_bz_q, stride_h_q, stride_seq_q = q.stride(0), q.stride(2), q.stride(1)
-        stride_bz_qo, stride_h_qo, stride_seq_qo = (
-            q_int8.stride(0),
-            q_int8.stride(2),
-            q_int8.stride(1),
-        )
-        stride_bz_k, stride_h_k, stride_seq_k = k.stride(0), k.stride(2), k.stride(1)
-        stride_bz_ko, stride_h_ko, stride_seq_ko = (
-            k_int8.stride(0),
-            k_int8.stride(2),
-            k_int8.stride(1),
-        )
+        q_strides = q.numpy().strides
+        k_strides = k.numpy().strides
+        q_int8_strides = q_int8.numpy().strides
+        k_int8_strides = k_int8.numpy().strides
+        stride_bz_q, stride_h_q, stride_seq_q = q_strides[0], q_strides[2], q_strides[1]
+        stride_bz_qo, stride_h_qo, stride_seq_qo = q_int8_strides[0], q_int8_strides[2], q_int8_strides[1]
+        stride_bz_k, stride_h_k, stride_seq_k = k_strides[0], k_strides[2], k_strides[1]
+        stride_bz_ko, stride_h_ko, stride_seq_ko = k_int8_strides[0], k_int8_strides[2], k_int8_strides[1]
     else:
         raise ValueError(f"Unknown tensor layout: {tensor_layout}")
     q_scale = paddle.empty(
@@ -227,6 +219,8 @@ def per_block_int8(
     if sm_scale is None:
         sm_scale = head_dim**-0.5
     grid = (qo_len + BLKQ - 1) // BLKQ, h_qo, b
+    q_scale_strides = q_scale.numpy().strides
+    k_scale_strides = k_scale.numpy().strides
     quant_per_block_int8_kernel[grid](
         q,
         q_int8,
@@ -238,8 +232,8 @@ def per_block_int8(
         stride_bz_qo,
         stride_h_qo,
         stride_seq_qo,
-        q_scale.stride(0),
-        q_scale.stride(1),
+        q_scale_strides[0],
+        q_scale_strides[1],
         sm_scale=sm_scale * 1.44269504,
         C=head_dim,
         BLK=BLKQ,
@@ -256,8 +250,8 @@ def per_block_int8(
         stride_bz_ko,
         stride_h_ko,
         stride_seq_ko,
-        k_scale.stride(0),
-        k_scale.stride(1),
+        k_scale_strides[0],
+        k_scale_strides[1],
         sm_scale=1.0,
         C=head_dim,
         BLK=BLKK,
@@ -275,33 +269,25 @@ def per_block_int4_unpack(
     if tensor_layout == "HND":
         b, h_qo, qo_len, head_dim = q.shape
         _, h_kv, kv_len, _ = k.shape
-        stride_bz_q, stride_h_q, stride_seq_q = q.stride(0), q.stride(1), q.stride(2)
-        stride_bz_qo, stride_h_qo, stride_seq_qo = (
-            q_int8.stride(0),
-            q_int8.stride(1),
-            q_int8.stride(2),
-        )
-        stride_bz_k, stride_h_k, stride_seq_k = k.stride(0), k.stride(1), k.stride(2)
-        stride_bz_ko, stride_h_ko, stride_seq_ko = (
-            k_int8.stride(0),
-            k_int8.stride(1),
-            k_int8.stride(2),
-        )
+        q_strides = q.numpy().strides
+        k_strides = k.numpy().strides
+        q_int8_strides = q_int8.numpy().strides
+        k_int8_strides = k_int8.numpy().strides
+        stride_bz_q, stride_h_q, stride_seq_q = q_strides[0], q_strides[1], q_strides[2]
+        stride_bz_qo, stride_h_qo, stride_seq_qo = q_int8_strides[0], q_int8_strides[1], q_int8_strides[2]
+        stride_bz_k, stride_h_k, stride_seq_k = k_strides[0], k_strides[1], k_strides[2]
+        stride_bz_ko, stride_h_ko, stride_seq_ko = k_int8_strides[0], k_int8_strides[1], k_int8_strides[2]
     elif tensor_layout == "NHD":
         b, qo_len, h_qo, head_dim = q.shape
         _, kv_len, h_kv, _ = k.shape
-        stride_bz_q, stride_h_q, stride_seq_q = q.stride(0), q.stride(2), q.stride(1)
-        stride_bz_qo, stride_h_qo, stride_seq_qo = (
-            q_int8.stride(0),
-            q_int8.stride(2),
-            q_int8.stride(1),
-        )
-        stride_bz_k, stride_h_k, stride_seq_k = k.stride(0), k.stride(2), k.stride(1)
-        stride_bz_ko, stride_h_ko, stride_seq_ko = (
-            k_int8.stride(0),
-            k_int8.stride(2),
-            k_int8.stride(1),
-        )
+        q_strides = q.numpy().strides
+        k_strides = k.numpy().strides
+        q_int8_strides = q_int8.numpy().strides
+        k_int8_strides = k_int8.numpy().strides
+        stride_bz_q, stride_h_q, stride_seq_q = q_strides[0], q_strides[2], q_strides[1]
+        stride_bz_qo, stride_h_qo, stride_seq_qo = q_int8_strides[0], q_int8_strides[2], q_int8_strides[1]
+        stride_bz_k, stride_h_k, stride_seq_k = k_strides[0], k_strides[2], k_strides[1]
+        stride_bz_ko, stride_h_ko, stride_seq_ko = k_int8_strides[0], k_int8_strides[2], k_int8_strides[1]
     else:
         raise ValueError(f"Unknown tensor layout: {tensor_layout}")
     q_scale = paddle.empty(
@@ -361,33 +347,25 @@ def per_block_int4(
     if tensor_layout == "HND":
         b, h_qo, qo_len, head_dim = q.shape
         _, h_kv, kv_len, _ = k.shape
-        stride_bz_q, stride_h_q, stride_seq_q = q.stride(0), q.stride(1), q.stride(2)
-        stride_bz_qo, stride_h_qo, stride_seq_qo = (
-            q_int8.stride(0),
-            q_int8.stride(1),
-            q_int8.stride(2),
-        )
-        stride_bz_k, stride_h_k, stride_seq_k = k.stride(0), k.stride(1), k.stride(2)
-        stride_bz_ko, stride_h_ko, stride_seq_ko = (
-            k_int8.stride(0),
-            k_int8.stride(1),
-            k_int8.stride(2),
-        )
+        q_strides = q.numpy().strides
+        k_strides = k.numpy().strides
+        q_int8_strides = q_int8.numpy().strides
+        k_int8_strides = k_int8.numpy().strides
+        stride_bz_q, stride_h_q, stride_seq_q = q_strides[0], q_strides[1], q_strides[2]
+        stride_bz_qo, stride_h_qo, stride_seq_qo = q_int8_strides[0], q_int8_strides[1], q_int8_strides[2]
+        stride_bz_k, stride_h_k, stride_seq_k = k_strides[0], k_strides[1], k_strides[2]
+        stride_bz_ko, stride_h_ko, stride_seq_ko = k_int8_strides[0], k_int8_strides[1], k_int8_strides[2]
     elif tensor_layout == "NHD":
         b, qo_len, h_qo, head_dim = q.shape
         _, kv_len, h_kv, _ = k.shape
-        stride_bz_q, stride_h_q, stride_seq_q = q.stride(0), q.stride(2), q.stride(1)
-        stride_bz_qo, stride_h_qo, stride_seq_qo = (
-            q_int8.stride(0),
-            q_int8.stride(2),
-            q_int8.stride(1),
-        )
-        stride_bz_k, stride_h_k, stride_seq_k = k.stride(0), k.stride(2), k.stride(1)
-        stride_bz_ko, stride_h_ko, stride_seq_ko = (
-            k_int8.stride(0),
-            k_int8.stride(2),
-            k_int8.stride(1),
-        )
+        q_strides = q.numpy().strides
+        k_strides = k.numpy().strides
+        q_int8_strides = q_int8.numpy().strides
+        k_int8_strides = k_int8.numpy().strides
+        stride_bz_q, stride_h_q, stride_seq_q = q_strides[0], q_strides[2], q_strides[1]
+        stride_bz_qo, stride_h_qo, stride_seq_qo = q_int8_strides[0], q_int8_strides[2], q_int8_strides[1]
+        stride_bz_k, stride_h_k, stride_seq_k = k_strides[0], k_strides[2], k_strides[1]
+        stride_bz_ko, stride_h_ko, stride_seq_ko = k_int8_strides[0], k_int8_strides[2], k_int8_strides[1]
     else:
         raise ValueError(f"Unknown tensor layout: {tensor_layout}")
     q_scale = paddle.empty(
@@ -447,33 +425,25 @@ def per_block_q_int8_k_int4(
     if tensor_layout == "HND":
         b, h_qo, qo_len, head_dim = q.shape
         _, h_kv, kv_len, _ = k.shape
-        stride_bz_q, stride_h_q, stride_seq_q = q.stride(0), q.stride(1), q.stride(2)
-        stride_bz_qo, stride_h_qo, stride_seq_qo = (
-            q_int8.stride(0),
-            q_int8.stride(1),
-            q_int8.stride(2),
-        )
-        stride_bz_k, stride_h_k, stride_seq_k = k.stride(0), k.stride(1), k.stride(2)
-        stride_bz_ko, stride_h_ko, stride_seq_ko = (
-            k_int8.stride(0),
-            k_int8.stride(1),
-            k_int8.stride(2),
-        )
+        q_strides = q.numpy().strides
+        k_strides = k.numpy().strides
+        q_int8_strides = q_int8.numpy().strides
+        k_int8_strides = k_int8.numpy().strides
+        stride_bz_q, stride_h_q, stride_seq_q = q_strides[0], q_strides[1], q_strides[2]
+        stride_bz_qo, stride_h_qo, stride_seq_qo = q_int8_strides[0], q_int8_strides[1], q_int8_strides[2]
+        stride_bz_k, stride_h_k, stride_seq_k = k_strides[0], k_strides[1], k_strides[2]
+        stride_bz_ko, stride_h_ko, stride_seq_ko = k_int8_strides[0], k_int8_strides[1], k_int8_strides[2]
     elif tensor_layout == "NHD":
         b, qo_len, h_qo, head_dim = q.shape
         _, kv_len, h_kv, _ = k.shape
-        stride_bz_q, stride_h_q, stride_seq_q = q.stride(0), q.stride(2), q.stride(1)
-        stride_bz_qo, stride_h_qo, stride_seq_qo = (
-            q_int8.stride(0),
-            q_int8.stride(2),
-            q_int8.stride(1),
-        )
-        stride_bz_k, stride_h_k, stride_seq_k = k.stride(0), k.stride(2), k.stride(1)
-        stride_bz_ko, stride_h_ko, stride_seq_ko = (
-            k_int8.stride(0),
-            k_int8.stride(2),
-            k_int8.stride(1),
-        )
+        q_strides = q.numpy().strides
+        k_strides = k.numpy().strides
+        q_int8_strides = q_int8.numpy().strides
+        k_int8_strides = k_int8.numpy().strides     
+        stride_bz_q, stride_h_q, stride_seq_q = q_strides[0], q_strides[2], q_strides[1]
+        stride_bz_qo, stride_h_qo, stride_seq_qo = q_int8_strides[0], q_int8_strides[2], q_int8_strides[1]
+        stride_bz_k, stride_h_k, stride_seq_k = k_strides[0], k_strides[2], k_strides[1]
+        stride_bz_ko, stride_h_ko, stride_seq_ko = k_int8_strides[0], k_int8_strides[2], k_int8_strides[1]
     else:
         raise ValueError(f"Unknown tensor layout: {tensor_layout}")
     q_scale = paddle.empty(
