@@ -257,25 +257,26 @@ def benchmark_triton_attention_int8(
             verbose=False,
             desc="Triton",
         )
-        flops_per_time = flops / time.mean * 1e-12
+        flops_per_time = flops / time.mean() * 1e-12
         q_output, _ = forward_func(
             q_codes, k_codes, v, q_scale, k_scale, output_dtype=output_dtype
         )
+        import pdb; pdb.set_trace()
         target = paddle.nn.functional.scaled_dot_product_attention(
-            prepare_q.transpose([0, 2, 1, 3]),
-            prepare_k.transpose([0, 2, 1, 3]),
-            v.transpose([0, 2, 1, 3]),
+            prepare_q,
+            prepare_k,
+            v,
             is_causal=causal,
-        ).transpose([0, 2, 1, 3])
+        )
         loss_fn = paddle.nn.MSELoss()
         loss = loss_fn(q_output, target)
         if logger:
             logger.log(
-                f"{seq_len} flops: {flops_per_time:.2f} TFLOP/s, {time.mean * 1000.0:.2f} ms,Total time {time.mean * repeats:.2f} s,Loss {loss:.2f}"
+                f"{seq_len} flops: {flops_per_time:.2f} TFLOP/s, {time.mean() * 1000.0:.2f} ms,Total time {time.mean() * repeats:.2f} s,Loss {loss:.2f}"
             )
         else:
             print(
-                f"{seq_len} flops: {flops_per_time:.2f} TFLOP/s, {time.mean * 1000.0:.2f} ms,Total time {time.mean * repeats:.2f} s,Loss {loss:.2f}"
+                f"{seq_len} flops: {flops_per_time:.2f} TFLOP/s, {time.mean() * 1000.0:.2f} ms,Total time {time.mean() * repeats:.2f} s,Loss {loss:.2f}"
             )
 
 

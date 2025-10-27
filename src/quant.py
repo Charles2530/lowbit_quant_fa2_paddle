@@ -270,6 +270,7 @@ def per_channel_fp8(
         v_transposed_permutted.shape, dtype=paddle.float8_e4m3fn, device=v.place
 
     )
+    # import pdb; pdb.set_trace()
     v_scale = paddle.empty((b, h_kv, head_dim), dtype=paddle.float32, device=v.place)
     vm = paddle.empty((b, h_kv, head_dim), dtype=paddle.float32, device=v.place)
     if smooth_v:

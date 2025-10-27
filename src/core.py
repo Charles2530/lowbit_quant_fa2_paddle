@@ -47,7 +47,32 @@ from .triton.quantization.attn_qk_int4_per_block import \
 from .triton.quantization.attn_qk_int4_per_block_causal import \
     forward_merging as attn_true_int4
 
-default_attn = paddle.nn.functional.scaled_dot_product_attention
+def manual_scaled_dot_product_attention(q, k, v, is_causal=False):
+    """
+    Manual implementation of scaled dot product attention as fallback
+    when paddle.nn.functional.scaled_dot_product_attention is not available
+    """
+    head_dim = q.shape[-1]
+    scale = head_dim ** -0.5
+    
+    # Compute attention scores
+    scores = paddle.matmul(q, k.transpose([0, 2, 3, 1])) * scale
+    
+    # Apply causal mask if needed
+    if is_causal:
+        seq_len = scores.shape[-1]
+        mask = paddle.tril(paddle.ones((seq_len, seq_len), dtype=scores.dtype))
+        scores = scores + (1 - mask) * -1e9
+    
+    # Apply softmax
+    attn_weights = paddle.nn.functional.softmax(scores, axis=-1)
+    
+    # Apply attention to values
+    output = paddle.matmul(attn_weights, v)
+    
+    return output
+
+default_attn = manual_scaled_dot_product_attention
 
 
 def get_cuda_arch_versions():

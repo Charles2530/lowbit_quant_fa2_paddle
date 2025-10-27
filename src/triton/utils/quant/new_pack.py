@@ -1,4 +1,5 @@
 import random
+from typing import assert_type
 
 import numpy as np
 import paddle
@@ -255,8 +256,8 @@ def triton_quantize_and_pack_along_last_dim(
     new_shape = B * nh * D, num_groups, group_size
     scale_mn_shape = B, D, nh, num_groups
     data = data.reshape(new_shape)
-    mx = paddle.empty((B * nh * D, num_groups), device=data.place, dtype=data.dtype)
-    mn = paddle.empty((B * nh * D, num_groups), device=data.place, dtype=data.dtype)
+    mx = paddle.empty((B * nh * D, num_groups), device=data.place).astype(data.dtype)
+    mn = paddle.empty((B * nh * D, num_groups), device=data.place).astype(data.dtype)
     BLOCK_SIZE_N = 128
     grid = lambda meta: (triton.cdiv(data.shape[0] * data.shape[1], BLOCK_SIZE_N),)
     _minmax_along_last_dim[grid](
@@ -277,7 +278,7 @@ def triton_quantize_and_pack_along_last_dim(
     data = data.view(-1, T)
     feat_per_int = 8 // bit
     packshape = np.prod(shape[:-1]), shape[-1] // feat_per_int
-    code = paddle.zeros(*packshape, device=data.place, dtype=paddle.int8)
+    code = paddle.zeros(*packshape, device=data.place).astype(paddle.int8)
     grid = lambda meta: (
         triton.cdiv(data.shape[0], BLOCK_SIZE_N),
         data.shape[1] // feat_per_int,
