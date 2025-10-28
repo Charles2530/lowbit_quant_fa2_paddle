@@ -198,6 +198,7 @@ def get_strides(tensor):
         strides = [i//2 for i in tensor.numpy().strides]
     else:
         raise ValueError(f"Unknown tensor dtype: {tensor.dtype}")
+    # return strides
     if(check_strides(tensor,strides)):
         return strides
     else:
@@ -208,8 +209,8 @@ def get_strides(tensor):
 def per_block_int8(
     q, k, km=None, BLKQ=128, BLKK=64, sm_scale=None, tensor_layout="HND"
 ):
-    q_int8 = paddle.empty(q.shape, dtype=paddle.int8, device=q.place)
-    k_int8 = paddle.empty(k.shape, dtype=paddle.int8, device=k.place)
+    q_int8 = paddle.empty(q.shape, dtype=paddle.int8).to(q.place)
+    k_int8 = paddle.empty(k.shape, dtype=paddle.int8).to(k.place)
     if km is not None:
         k = k - km
     if tensor_layout == "HND":
@@ -242,11 +243,11 @@ def per_block_int8(
     else:
         raise ValueError(f"Unknown tensor layout: {tensor_layout}")
     q_scale = paddle.empty(
-        (b, h_qo, (qo_len + BLKQ - 1) // BLKQ), device=q.place, dtype=paddle.float32
-    )
+        (b, h_qo, (qo_len + BLKQ - 1) // BLKQ), dtype=paddle.float32
+    ).to(q.place)
     k_scale = paddle.empty(
-        (b, h_kv, (kv_len + BLKK - 1) // BLKK), device=q.place, dtype=paddle.float32
-    )
+        (b, h_kv, (kv_len + BLKK - 1) // BLKK), dtype=paddle.float32
+    ).to(q.place)
     if sm_scale is None:
         sm_scale = head_dim**-0.5
     grid = (qo_len + BLKQ - 1) // BLKQ, h_qo, b

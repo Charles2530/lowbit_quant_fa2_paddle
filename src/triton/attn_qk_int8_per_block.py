@@ -180,9 +180,9 @@ def forward(
     BLOCK_M = 128
     BLOCK_N = 64
     stage = 1
-    o = paddle.empty(q.shape, dtype=output_dtype, device=q.place)
-    o_scale = paddle.empty(q_scale.shape, dtype=paddle.float16, device=q.place)
-    o_mn = paddle.empty(q_scale.shape, dtype=paddle.float16, device=q.place)
+    o = paddle.empty(q.shape, dtype=output_dtype).to(q.place)
+    o_scale = paddle.empty(q_scale.shape, dtype=paddle.float16).to(q.place)
+    o_mn = paddle.empty(q_scale.shape, dtype=paddle.float16).to(q.place)
     if tensor_layout == "HND":
         b, h_qo, qo_len, head_dim = q.shape
         _, h_kv, kv_len, _ = k.shape
@@ -212,7 +212,7 @@ def forward(
     if return_lse:
         lse = paddle.empty([b, h_qo, qo_len], dtype=paddle.float32, device=q.place)
     else:
-        lse = paddle.empty([0], dtype=paddle.float32, device="cpu")
+        lse = paddle.empty([0], dtype=paddle.float32).cpu()
     grid = triton.cdiv(qo_len, BLOCK_M), h_qo, b
     _attn_fwd[grid](
         q,

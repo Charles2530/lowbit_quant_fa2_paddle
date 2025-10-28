@@ -7,7 +7,8 @@ CUDA_DEVICE=${1:-0}
 echo "Setting up Triton environment for GPU $CUDA_DEVICE..."
 
 # 设置环境路径（不依赖conda activate，直接使用conda环境路径）
-CONDA_ENV_PATH=/home/charles/miniconda3/envs/paddle_nightly
+CONDA_ENV_PATH=/mnt/disk3/conda/envs/paddle_nightly_bk
+conda activate $CONDA_ENV_PATH
 # 设置 Python 环境
 export PATH=$CONDA_ENV_PATH/bin:$PATH
 

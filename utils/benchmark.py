@@ -225,8 +225,9 @@ def benchmark_triton_attention_int8(
             dtype=paddle.int32,
         ).astype(k_dtype)
         v = paddle.randn(
-            batch_size, num_heads, seq_len, head_dim, dtype=v_dtype, device="cuda"
+            (batch_size, num_heads, seq_len, head_dim), dtype=v_dtype
         )
+        v = v.cuda()
         quant_type = 1
         if quant_type == 0:
             q_codes, q_scale, _ = triton_quantize_and_pack_along_last_dim(

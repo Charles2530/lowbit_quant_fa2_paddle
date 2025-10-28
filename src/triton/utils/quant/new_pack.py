@@ -1,5 +1,4 @@
 import random
-from typing import assert_type
 
 import numpy as np
 import paddle
@@ -7,7 +6,7 @@ import triton
 import triton.language as tl
 
 
-def quant_and_pack_qcache(q: paddle.FloatTensor, group_size: int, bits: int):
+def quant_and_pack_qcache(q, group_size: int, bits: int):
     assert len(q.shape) == 4
     shape = q.shape
     B, nh, T, D = shape
@@ -27,7 +26,7 @@ def quant_and_pack_qcache(q: paddle.FloatTensor, group_size: int, bits: int):
     return code, scale, mn
 
 
-def quant_and_pack_kcache(k: paddle.FloatTensor, group_size: int, bits: int):
+def quant_and_pack_kcache(k, group_size: int, bits: int):
     assert len(k.shape) == 4
     shape = k.shape
     B, nh, T, D = shape
@@ -47,7 +46,7 @@ def quant_and_pack_kcache(k: paddle.FloatTensor, group_size: int, bits: int):
     return code, scale, mn
 
 
-def quant_and_pack_vcache(v: paddle.FloatTensor, group_size: int, bits: int):
+def quant_and_pack_vcache(v, group_size: int, bits: int):
     shape = v.shape
     assert len(shape) == 4
     assert v.shape[-1] % group_size == 0
@@ -67,9 +66,9 @@ def quant_and_pack_vcache(v: paddle.FloatTensor, group_size: int, bits: int):
 
 
 def unpack_and_dequant_kcache(
-    k_code: paddle.FloatTensor,
-    scale: paddle.FloatTensor,
-    mn: paddle.FloatTensor,
+    k_code,
+    scale,
+    mn,
     group_size: int,
     bits: int,
 ):
@@ -96,9 +95,9 @@ def unpack_and_dequant_kcache(
 
 
 def unpack_and_dequant_qcache(
-    q_code: paddle.FloatTensor,
-    scale: paddle.FloatTensor,
-    mn: paddle.FloatTensor,
+    q_code,
+    scale,
+    mn,
     group_size: int,
     bits: int,
 ):
@@ -125,9 +124,9 @@ def unpack_and_dequant_qcache(
 
 
 def unpack_and_dequant_vcache(
-    v_code: paddle.FloatTensor,
-    scale: paddle.FloatTensor,
-    mn: paddle.FloatTensor,
+    v_code,
+    scale,
+    mn,
     group_size: int,
     bits: int,
 ):
@@ -171,7 +170,7 @@ def pack_tensor(data, bits, pack_dim):
     return code
 
 
-def unpack_tensor(code: paddle.FloatTensor, bits: int, pack_dim: int):
+def unpack_tensor(code, bits: int, pack_dim: int):
     assert bits in [1, 2, 4, 8]
     shape = code.shape
     feat_per_int = 8 // bits

@@ -5,9 +5,9 @@ from src.triton.utils.quant.new_pack import unpack_tensor
 
 
 def unpack_and_dequant_ocache(
-    o_code: paddle.FloatTensor,
-    scale: paddle.FloatTensor,
-    mn: paddle.FloatTensor,
+    o_code,
+    scale,
+    mn,
     group_size: int,
     bits: int,
 ):
@@ -34,9 +34,9 @@ def unpack_and_dequant_ocache(
 
 
 def unpack_and_dequant(
-    o_code: paddle.FloatTensor,
-    scale: paddle.FloatTensor,
-    mn: paddle.FloatTensor,
+    o_code,
+    scale,
+    mn,
     group_size: int,
     bits: int,
 ):
