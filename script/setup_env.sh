@@ -7,19 +7,21 @@ CUDA_DEVICE=${1:-0}
 echo "Setting up Triton environment for GPU $CUDA_DEVICE..."
 
 # 设置环境路径（不依赖conda activate，直接使用conda环境路径）
-CONDA_ENV_PATH=/mnt/disk3/conda/envs/paddle_nightly_bk
+CONDA_ENV_PATH=/home/dyf/miniconda/envs/paddle_nightly
 conda activate $CONDA_ENV_PATH
 # 设置 Python 环境
 export PATH=$CONDA_ENV_PATH/bin:$PATH
 
 # 设置 CUDA 环境变量
 export CUDA_VISIBLE_DEVICES=$CUDA_DEVICE
-export CUDA_HOME=/usr/local/cuda-11.8
-export CUDA_PATH=/usr/local/cuda-11.8
-export PATH=/usr/local/cuda-11.8/bin:$PATH
+export CUDA_HOME=/usr/local/cuda-12.8
+export CUDA_PATH=/usr/local/cuda-12.8
+export PATH=/usr/local/cuda-12.8/bin:$PATH
 
 # 设置 cuDNN 库路径
-export LD_LIBRARY_PATH=$CONDA_ENV_PATH/lib:/usr/local/cuda-11.8/lib64:$LD_LIBRARY_PATH
+export LD_PRELOAD=$CONDA_PREFIX/lib/libstdc++.so.6
+export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$CONDA_ENV_PATH/lib:/usr/local/cuda-12.8/lib64:$LD_LIBRARY_PATH
 
 # 设置 Triton 相关环境变量
 export TRITON_CACHE_DIR=/tmp/triton_cache_${CUDA_DEVICE}

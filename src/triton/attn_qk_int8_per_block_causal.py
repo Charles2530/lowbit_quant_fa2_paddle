@@ -233,36 +233,36 @@ def forward(
     if tensor_layout == "HND":
         b, h_qo, qo_len, head_dim = q.shape
         _, h_kv, kv_len, _ = k.shape
-        stride_bz_q, stride_h_q, stride_seq_q = q.stride(0), q.stride(1), q.stride(2)
-        stride_bz_k, stride_h_k, stride_seq_k = k.stride(0), k.stride(1), k.stride(2)
-        stride_bz_v, stride_h_v, stride_seq_v = v.stride(0), v.stride(1), v.stride(2)
-        stride_bz_o, stride_h_o, stride_seq_o = o.stride(0), o.stride(1), o.stride(2)
+        stride_bz_q, stride_h_q, stride_seq_q = q.strides[0], q.strides[1], q.strides[2]
+        stride_bz_k, stride_h_k, stride_seq_k = k.strides[0], k.strides[1], k.strides[2]
+        stride_bz_v, stride_h_v, stride_seq_v = v.strides[0], v.strides[1], v.strides[2]
+        stride_bz_o, stride_h_o, stride_seq_o = o.strides[0], o.strides[1], o.strides[2]
         stride_osz, stride_osh, stride_osn = (
-            o_scale.stride(0),
-            o_scale.stride(1),
-            o_scale.stride(2),
+            o_scale.strides[0],
+            o_scale.strides[1],
+            o_scale.strides[2],
         )
         stride_omz, stride_omh, stride_omn = (
-            o_mn.stride(0),
-            o_mn.stride(1),
-            o_mn.stride(2),
+            o_mn.strides[0],
+            o_mn.strides[1],
+            o_mn.strides[2],
         )
     elif tensor_layout == "NHD":
         b, qo_len, h_qo, head_dim = q.shape
         _, kv_len, h_kv, _ = k.shape
-        stride_bz_q, stride_h_q, stride_seq_q = q.stride(0), q.stride(2), q.stride(1)
-        stride_bz_k, stride_h_k, stride_seq_k = k.stride(0), k.stride(2), k.stride(1)
-        stride_bz_v, stride_h_v, stride_seq_v = v.stride(0), v.stride(2), v.stride(1)
-        stride_bz_o, stride_h_o, stride_seq_o = o.stride(0), o.stride(2), o.stride(1)
+        stride_bz_q, stride_h_q, stride_seq_q = q.strides[0], q.strides[2], q.strides[1]
+        stride_bz_k, stride_h_k, stride_seq_k = k.strides[0], k.strides[2], k.strides[1]
+        stride_bz_v, stride_h_v, stride_seq_v = v.strides[0], v.strides[2], v.strides[1]
+        stride_bz_o, stride_h_o, stride_seq_o = o.strides[0], o.strides[2], o.strides[1]
         stride_osz, stride_osh, stride_osn = (
-            o_scale.stride(0),
-            o_scale.stride(1),
-            o_scale.stride(2),
+            o_scale.strides[0],
+            o_scale.strides[1],
+            o_scale.strides[2],
         )
         stride_omz, stride_omh, stride_omn = (
-            o_mn.stride(0),
-            o_mn.stride(1),
-            o_mn.stride(2),
+            o_mn.strides[0],
+            o_mn.strides[1],
+            o_mn.strides[2],
         )
     else:
         raise ValueError(f"tensor_layout {tensor_layout} not supported")
@@ -334,17 +334,17 @@ def forward_baseline(
     if tensor_layout == "HND":
         b, h_qo, qo_len, head_dim = q.shape
         _, h_kv, kv_len, _ = k.shape
-        stride_bz_q, stride_h_q, stride_seq_q = q.stride(0), q.stride(1), q.stride(2)
-        stride_bz_k, stride_h_k, stride_seq_k = k.stride(0), k.stride(1), k.stride(2)
-        stride_bz_v, stride_h_v, stride_seq_v = v.stride(0), v.stride(1), v.stride(2)
-        stride_bz_o, stride_h_o, stride_seq_o = o.stride(0), o.stride(1), o.stride(2)
+        stride_bz_q, stride_h_q, stride_seq_q = q.strides[0], q.strides[1], q.strides[2]
+        stride_bz_k, stride_h_k, stride_seq_k = k.strides[0], k.strides[1], k.strides[2]
+        stride_bz_v, stride_h_v, stride_seq_v = v.strides[0], v.strides[1], v.strides[2]
+        stride_bz_o, stride_h_o, stride_seq_o = o.strides[0], o.strides[1], o.strides[2]
     elif tensor_layout == "NHD":
         b, qo_len, h_qo, head_dim = q.shape
         _, kv_len, h_kv, _ = k.shape
-        stride_bz_q, stride_h_q, stride_seq_q = q.stride(0), q.stride(2), q.stride(1)
-        stride_bz_k, stride_h_k, stride_seq_k = k.stride(0), k.stride(2), k.stride(1)
-        stride_bz_v, stride_h_v, stride_seq_v = v.stride(0), v.stride(2), v.stride(1)
-        stride_bz_o, stride_h_o, stride_seq_o = o.stride(0), o.stride(2), o.stride(1)
+        stride_bz_q, stride_h_q, stride_seq_q = q.strides[0], q.strides[2], q.strides[1]
+        stride_bz_k, stride_h_k, stride_seq_k = k.strides[0], k.strides[2], k.strides[1]
+        stride_bz_v, stride_h_v, stride_seq_v = v.strides[0], v.strides[2], v.strides[1]
+        stride_bz_o, stride_h_o, stride_seq_o = o.strides[0], o.strides[2], o.strides[1]
     else:
         raise ValueError(f"tensor_layout {tensor_layout} not supported")
     assert qo_len == kv_len, "qo_len and kv_len must be equal for causal attention"

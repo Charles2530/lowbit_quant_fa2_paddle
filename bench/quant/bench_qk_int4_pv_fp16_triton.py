@@ -6,9 +6,9 @@ import paddle
 sys.path.append(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 )
-from src.triton_kernels.quantization.attn_qk_int4_per_block import \
+from src.triton.quantization.attn_qk_int4_per_block import \
     forward_merging as forward
-from src.triton_kernels.quantization.attn_qk_int4_per_block_causal import \
+from src.triton.quantization.attn_qk_int4_per_block_causal import \
     forward as forward_causal
 from utils.benchmark import benchmark_triton_attention_int4
 from utils.logger_util import Logger, eval_log

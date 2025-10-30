@@ -166,7 +166,6 @@ def _attn_fwd(
         l_i_log = tl.log2(l_i) + m_i
         tl.store(lse_ptrs, l_i_log, mask=offs_m < qo_len)
 
-from src.triton.quant_per_block import get_strides
 def forward(
     q,
     k,
@@ -186,25 +185,17 @@ def forward(
     if tensor_layout == "HND":
         b, h_qo, qo_len, head_dim = q.shape
         _, h_kv, kv_len, _ = k.shape
-        q_strides = get_strides(q)
-        k_strides = get_strides(k)
-        v_strides = get_strides(v)
-        o_strides = get_strides(o)
-        stride_bz_q, stride_h_q, stride_seq_q = q_strides[0], q_strides[1], q_strides[2]
-        stride_bz_k, stride_h_k, stride_seq_k = k_strides[0], k_strides[1], k_strides[2]
-        stride_bz_v, stride_h_v, stride_seq_v = v_strides[0], v_strides[1], v_strides[2]
-        stride_bz_o, stride_h_o, stride_seq_o = o_strides[0], o_strides[1], o_strides[2]
+        stride_bz_q, stride_h_q, stride_seq_q = q.strides[0], q.strides[1], q.strides[2]
+        stride_bz_k, stride_h_k, stride_seq_k = k.strides[0], k.strides[1], k.strides[2]
+        stride_bz_v, stride_h_v, stride_seq_v = v.strides[0], v.strides[1], v.strides[2]
+        stride_bz_o, stride_h_o, stride_seq_o = o.strides[0], o.strides[1], o.strides[2]
     elif tensor_layout == "NHD":
         b, qo_len, h_qo, head_dim = q.shape
         _, kv_len, h_kv, _ = k.shape
-        q_strides = q.numpy().strides
-        k_strides = k.numpy().strides
-        v_strides = v.numpy().strides
-        o_strides = o.numpy().strides 
-        stride_bz_q, stride_h_q, stride_seq_q = q_strides[0], q_strides[2], q_strides[1]
-        stride_bz_k, stride_h_k, stride_seq_k = k_strides[0], k_strides[2], k_strides[1]
-        stride_bz_v, stride_h_v, stride_seq_v = v_strides[0], v_strides[2], v_strides[1]
-        stride_bz_o, stride_h_o, stride_seq_o = o_strides[0], o_strides[2], o_strides[1]
+        stride_bz_q, stride_h_q, stride_seq_q = q.strides[0], q.strides[2], q.strides[1]
+        stride_bz_k, stride_h_k, stride_seq_k = k.strides[0], k.strides[2], k.strides[1]
+        stride_bz_v, stride_h_v, stride_seq_v = v.strides[0], v.strides[2], v.strides[1]
+        stride_bz_o, stride_h_o, stride_seq_o = o.strides[0], o.strides[2], o.strides[1]
     else:
         raise ValueError(f"tensor_layout {tensor_layout} not supported")
     HEAD_DIM_K = head_dim
@@ -266,17 +257,17 @@ def forward_baseline(
     if tensor_layout == "HND":
         b, h_qo, qo_len, head_dim = q.shape
         _, h_kv, kv_len, _ = k.shape
-        stride_bz_q, stride_h_q, stride_seq_q = q.stride(0), q.stride(1), q.stride(2)
-        stride_bz_k, stride_h_k, stride_seq_k = k.stride(0), k.stride(1), k.stride(2)
-        stride_bz_v, stride_h_v, stride_seq_v = v.stride(0), v.stride(1), v.stride(2)
-        stride_bz_o, stride_h_o, stride_seq_o = o.stride(0), o.stride(1), o.stride(2)
+        stride_bz_q, stride_h_q, stride_seq_q = q.strides[0], q.strides[1], q.strides[2]
+        stride_bz_k, stride_h_k, stride_seq_k = k.strides[0], k.strides[1], k.strides[2]
+        stride_bz_v, stride_h_v, stride_seq_v = v.strides[0], v.strides[1], v.strides[2]
+        stride_bz_o, stride_h_o, stride_seq_o = o.strides[0], o.strides[1], o.strides[2]
     elif tensor_layout == "NHD":
         b, qo_len, h_qo, head_dim = q.shape
         _, kv_len, h_kv, _ = k.shape
-        stride_bz_q, stride_h_q, stride_seq_q = q.stride(0), q.stride(2), q.stride(1)
-        stride_bz_k, stride_h_k, stride_seq_k = k.stride(0), k.stride(2), k.stride(1)
-        stride_bz_v, stride_h_v, stride_seq_v = v.stride(0), v.stride(2), v.stride(1)
-        stride_bz_o, stride_h_o, stride_seq_o = o.stride(0), o.stride(2), o.stride(1)
+        stride_bz_q, stride_h_q, stride_seq_q = q.strides[0], q.strides[2], q.strides[1]
+        stride_bz_k, stride_h_k, stride_seq_k = k.strides[0], k.strides[2], k.strides[1]
+        stride_bz_v, stride_h_v, stride_seq_v = v.strides[0], v.strides[2], v.strides[1]
+        stride_bz_o, stride_h_o, stride_seq_o = o.strides[0], o.strides[2], o.strides[1]
     else:
         raise ValueError(f"tensor_layout {tensor_layout} not supported")
     HEAD_DIM_K = head_dim

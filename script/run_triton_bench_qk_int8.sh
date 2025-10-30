@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CUDA_DEVICE=${1:-3}
+CUDA_DEVICE=${1:-1}
 
 export CUDA_VISIBLE_DEVICES=$CUDA_DEVICE
 # method='xformers, torch,fa2'

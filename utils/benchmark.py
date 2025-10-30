@@ -262,7 +262,7 @@ def benchmark_triton_attention_int8(
         q_output, _ = forward_func(
             q_codes, k_codes, v, q_scale, k_scale, output_dtype=output_dtype
         )
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         target = paddle.nn.functional.scaled_dot_product_attention(
             prepare_q,
             prepare_k,
