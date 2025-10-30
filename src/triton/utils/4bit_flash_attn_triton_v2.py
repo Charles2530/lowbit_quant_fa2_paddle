@@ -741,7 +741,7 @@ def main(tree_width, seq_len, head_num, feat_dim):
             softmax_lse2,
             S_dmask,
             rng_state,
->>>>>>        ) = flash_attn.flash_attn_interface._flash_attn_forward(
+        ) = flash_attn.flash_attn_interface._flash_attn_forward(
             query_states,
             dequant_k.transpose(1, 3),
             dequant_v,
@@ -764,7 +764,7 @@ def main(tree_width, seq_len, head_num, feat_dim):
             softmax_lse2,
             S_dmask,
             rng_state,
->>>>>>        ) = flash_attn.flash_attn_interface._flash_attn_forward(
+        ) = flash_attn.flash_attn_interface._flash_attn_forward(
             query_states,
             dequant_k.transpose(1, 3),
             dequant_v,

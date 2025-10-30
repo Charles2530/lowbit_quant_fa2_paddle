@@ -277,14 +277,12 @@ def triton_quantize_and_pack_along_last_dim(
     data = data.view(-1, T)
     feat_per_int = 8 // bit
     packshape = np.prod(shape[:-1]), shape[-1] // feat_per_int
-    code = paddle.zeros(*packshape, device=data.place).astype(paddle.int8)
+    # import pdb;pdb.set_trace()
+    code = paddle.zeros(packshape, device=data.place).astype(paddle.int8)
     grid = lambda meta: (
         triton.cdiv(data.shape[0], BLOCK_SIZE_N),
         data.shape[1] // feat_per_int,
     )
-    import pdb
-
-    pdb.set_trace()
     _pack_along_last_dim[grid](
         bit,
         data,

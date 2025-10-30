@@ -9,6 +9,7 @@ sys.path.append(
 from utils.benchmark import benchmark_attention
 from utils.logger_util import Logger, eval_log
 from utils.parser_util import get_args, get_save_name
+from paddle.nn.functional import scaled_dot_product_attention as sdpa
 
 
 def pipeline(args, logger):
@@ -17,9 +18,9 @@ def pipeline(args, logger):
     head_dim = args.head_dim
     seq_lens = [1024, 2048, 4096, 8192, 16384, 32768]
     assert args.method in ["fa2", "torch", "xformers"]
->>>>>>    torch.backends.cuda.enable_flash_sdp(args.method == "fa2")
->>>>>>    torch.backends.cuda.enable_math_sdp(args.method == "torch")
->>>>>>    torch.backends.cuda.enable_mem_efficient_sdp(args.method == "xformers")
+# >>>>>>    torch.backends.cuda.enable_flash_sdp(args.method == "fa2")
+# >>>>>>    torch.backends.cuda.enable_math_sdp(args.method == "torch")
+# >>>>>>    torch.backends.cuda.enable_mem_efficient_sdp(args.method == "xformers")
     logger.log(f"Baseline: {args.method}")
     logger.log(
         f"batch_size: {batch_size}, num_heads: {num_heads}, head_dim: {head_dim}"

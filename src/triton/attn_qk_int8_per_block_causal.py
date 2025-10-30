@@ -213,6 +213,126 @@ def _attn_fwd(
     o_mn_ptrs = O_mn + (off_z * stride_omz + off_h * stride_omh) + offs_m * stride_omn
     tl.store(o_mn_ptrs, m_i, mask=offs_m < qo_len)
 
+@triton.jit
+def _attn_fwd_base(
+    Q,
+    K,
+    V,
+    Q_scale,
+    K_scale,
+    Out,
+    Lse,
+    stride_qz,
+    stride_qh,
+    stride_qn,
+    stride_kz,
+    stride_kh,
+    stride_kn,
+    stride_vz,
+    stride_vh,
+    stride_vn,
+    stride_oz,
+    stride_oh,
+    stride_on,
+    qo_len,
+    kv_len,
+    H: tl.constexpr,
+    num_kv_groups: tl.constexpr,
+    HEAD_DIM: tl.constexpr,
+    BLOCK_M: tl.constexpr,
+    BLOCK_N: tl.constexpr,
+    STAGE: tl.constexpr,
+    RETURN_LSE: tl.constexpr,
+):
+    start_m = tl.program_id(0)
+    off_z = tl.program_id(2).to(tl.int64)
+    off_h = tl.program_id(1).to(tl.int64)
+    q_scale_offset = (off_z * H + off_h) * tl.cdiv(qo_len, BLOCK_M)
+    k_scale_offset = (off_z * (H // num_kv_groups) + off_h // num_kv_groups) * tl.cdiv(
+        kv_len, BLOCK_N
+    )
+    offs_m = start_m * BLOCK_M + tl.arange(0, BLOCK_M)
+    offs_n = tl.arange(0, BLOCK_N)
+    offs_k = tl.arange(0, HEAD_DIM)
+    Q_ptrs = (
+        Q
+        + (off_z * stride_qz + off_h * stride_qh)
+        + offs_m[:, None] * stride_qn
+        + offs_k[None, :]
+    )
+    Q_scale_ptr = Q_scale + q_scale_offset + start_m
+    K_ptrs = (
+        K
+        + (off_z * stride_kz + off_h // num_kv_groups * stride_kh)
+        + offs_n[None, :] * stride_kn
+        + offs_k[:, None]
+    )
+    K_scale_ptr = K_scale + k_scale_offset
+    V_ptrs = (
+        V
+        + (off_z * stride_vz + off_h // num_kv_groups * stride_vh)
+        + offs_n[:, None] * stride_vn
+        + offs_k[None, :]
+    )
+    O_block_ptr = (
+        Out
+        + (off_z * stride_oz + off_h * stride_oh)
+        + offs_m[:, None] * stride_on
+        + offs_k[None, :]
+    )
+    m_i = tl.zeros([BLOCK_M], dtype=tl.float32) - float("inf")
+    l_i = tl.zeros([BLOCK_M], dtype=tl.float32) + 1.0
+    acc = tl.zeros([BLOCK_M, HEAD_DIM], dtype=tl.float32)
+    q = tl.load(Q_ptrs, mask=offs_m[:, None] < qo_len)
+    q_scale = tl.load(Q_scale_ptr)
+    acc, l_i, m_i = _attn_fwd_inner(
+        acc,
+        l_i,
+        m_i,
+        q,
+        q_scale,
+        kv_len,
+        K_ptrs,
+        K_scale_ptr,
+        V_ptrs,
+        stride_kn,
+        stride_vn,
+        start_m,
+        BLOCK_M,
+        HEAD_DIM,
+        BLOCK_N,
+        4 - STAGE,
+        offs_m,
+        offs_n,
+    )
+    acc, l_i, m_i = _attn_fwd_inner(
+        acc,
+        l_i,
+        m_i,
+        q,
+        q_scale,
+        kv_len,
+        K_ptrs,
+        K_scale_ptr,
+        V_ptrs,
+        stride_kn,
+        stride_vn,
+        start_m,
+        BLOCK_M,
+        HEAD_DIM,
+        BLOCK_N,
+        2,
+        offs_m,
+        offs_n,
+    )
+    o_scale = 1.0 / l_i
+    acc = acc * o_scale[:, None]
+    tl.store(O_block_ptr, acc.to(Out.type.element_ty), mask=offs_m[:, None] < qo_len)
+    if RETURN_LSE:
+        lse_ptrs = Lse + (off_z * qo_len * H + off_h * qo_len) + offs_m
+        l_i_log = tl.log2(l_i) + m_i
+        tl.store(lse_ptrs, l_i_log, mask=offs_m < qo_len)
+
 
 def forward(
     q,
@@ -355,7 +475,7 @@ def forward_baseline(
     else:
         lse = paddle.empty([0], dtype=paddle.float32, device="cpu")
     grid = triton.cdiv(qo_len, BLOCK_M), h_qo, b
-    _attn_fwd[grid](
+    _attn_fwd_base[grid](
         q,
         k,
         v,

@@ -129,7 +129,6 @@ def quant_per_block_int4_kernel(
     tl.store(output_ptrs, x_int4, mask=offs_n[:, None] < L)
     tl.store(scale_ptrs, scale)
 
-
 @triton.jit
 def quant_per_block_int8_kernel(
     Input,

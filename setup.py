@@ -36,7 +36,7 @@ NVCC_FLAGS = [
     "-Xptxas=-v",
     "-diag-suppress=174",
 ]
->>>>>>ABI = 1 if torch._C._GLIBCXX_USE_CXX11_ABI else 0
+ABI = 1 
 CXX_FLAGS += [f"-D_GLIBCXX_USE_CXX11_ABI={ABI}"]
 NVCC_FLAGS += [f"-D_GLIBCXX_USE_CXX11_ABI={ABI}"]
 if CUDA_HOME is None:

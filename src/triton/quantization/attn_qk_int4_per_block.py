@@ -51,20 +51,8 @@ def _attn_fwd_inner(
         k_mask = offs_n[None, :] < kv_len - start_n
         k = tl.load(K_ptrs, mask=k_mask)
         k_scale = tl.load(K_scale_ptr)
-        q_low = q & 15
-        q_high = q >> 4
-        k_low = k & 15
-        k_high = k >> 4
-        qk = (
-            (
-                tl.dot(q_high, k_high)
-                + tl.dot(q_high, k_low)
-                + tl.dot(q_low, k_high)
-                + tl.dot(q_low, k_low)
-            ).to(tl.float32)
-            * q_scale
-            * k_scale
-        )
+        qk = tl.dot(q, k).to(tl.float32) * q_scale * k_scale
+
         m_ij = tl.maximum(m_i, tl.max(qk, 1))
         qk = qk - m_ij[:, None]
         p = tl.math.exp2(qk)
@@ -182,55 +170,36 @@ def _attn_fwd(
         l_i_log = tl.log2(l_i) + m_i
         tl.store(lse_ptrs, l_i_log, mask=offs_m < qo_len)
 
-
 def forward(
-    qcode,
-    qscale,
-    qmn,
-    kcode,
-    kscale,
-    kmn,
+    q,
+    k,
     v,
+    q_scale,
+    k_scale,
     tensor_layout="HND",
-    output_dtype=paddle.float16,
+    output_dtype=paddle.int8,
     return_lse=False,
-    group_size=32,
-    bits=4,
 ):
     BLOCK_M = 128
     BLOCK_N = 64
     stage = 1
-    o = paddle.empty(qcode.shape, dtype=output_dtype, device=qcode.place)
+    o = paddle.empty(q.shape, dtype=output_dtype).to(q.place)
+    o_scale = paddle.empty(q_scale.shape, dtype=paddle.float16).to(q.place)
+    o_mn = paddle.empty(q_scale.shape, dtype=paddle.float16).to(q.place)
     if tensor_layout == "HND":
-        b, h_qo, qo_len, head_dim = qcode.shape
-        _, h_kv, kv_len, _ = kcode.shape
-        stride_bz_q, stride_h_q, stride_seq_q = (
-            qcode.stride(0),
-            qcode.stride(1),
-            qcode.stride(2),
-        )
-        stride_bz_k, stride_h_k, stride_seq_k = (
-            kcode.stride(0),
-            kcode.stride(1),
-            kcode.stride(2),
-        )
-        stride_bz_v, stride_h_v, stride_seq_v = v.stride(0), v.stride(1), v.stride(2)
-        stride_bz_o, stride_h_o, stride_seq_o = o.stride(0), o.stride(1), o.stride(2)
+        b, h_qo, qo_len, head_dim = q.shape
+        _, h_kv, kv_len, _ = k.shape
+        stride_bz_q, stride_h_q, stride_seq_q = q.strides[0], q.strides[1], q.strides[2]
+        stride_bz_k, stride_h_k, stride_seq_k = k.strides[0], k.strides[1], k.strides[2]
+        stride_bz_v, stride_h_v, stride_seq_v = v.strides[0], v.strides[1], v.strides[2]
+        stride_bz_o, stride_h_o, stride_seq_o = o.strides[0], o.strides[1], o.strides[2]
     elif tensor_layout == "NHD":
-        b, qo_len, h_qo, head_dim = qcode.shape
-        _, kv_len, h_kv, _ = kcode.shape
-        stride_bz_q, stride_h_q, stride_seq_q = (
-            qcode.stride(0),
-            qcode.stride(2),
-            qcode.stride(1),
-        )
-        stride_bz_k, stride_h_k, stride_seq_k = (
-            kcode.stride(0),
-            kcode.stride(2),
-            kcode.stride(1),
-        )
-        stride_bz_v, stride_h_v, stride_seq_v = v.stride(0), v.stride(2), v.stride(1)
-        stride_bz_o, stride_h_o, stride_seq_o = o.stride(0), o.stride(2), o.stride(1)
+        b, qo_len, h_qo, head_dim = q.shape
+        _, kv_len, h_kv, _ = k.shape
+        stride_bz_q, stride_h_q, stride_seq_q = q.strides[0], q.strides[2], q.strides[1]
+        stride_bz_k, stride_h_k, stride_seq_k = k.strides[0], k.strides[2], k.strides[1]
+        stride_bz_v, stride_h_v, stride_seq_v = v.strides[0], v.strides[2], v.strides[1]
+        stride_bz_o, stride_h_o, stride_seq_o = o.strides[0], o.strides[2], o.strides[1]
     else:
         raise ValueError(f"tensor_layout {tensor_layout} not supported")
     assert qo_len == kv_len, "qo_len and kv_len must be equal for causal attention"
@@ -239,14 +208,14 @@ def forward(
     if return_lse:
         lse = paddle.empty([b, h_qo, qo_len], dtype=paddle.float32, device=q.place)
     else:
-        lse = paddle.empty([0], dtype=paddle.float32, device="cpu")
+        lse = paddle.empty([0], dtype=paddle.float32).cpu()
     grid = triton.cdiv(qo_len, BLOCK_M), h_qo, b
     _attn_fwd[grid](
-        qcode,
-        kcode,
+        q,
+        k,
         v,
-        qscale,
-        kscale,
+        q_scale,
+        k_scale,
         o,
         lse,
         stride_bz_q,
@@ -278,15 +247,13 @@ def forward(
 
 def forward_merging(
     qcode,
-    qscale,
     kcode,
-    kscale,
     v,
+    qscale,
+    kscale,
     tensor_layout="HND",
     output_dtype=paddle.float16,
     return_lse=False,
-    group_size=32,
-    bits=4,
 ):
     BLOCK_M = 128
     BLOCK_N = 64
@@ -295,33 +262,17 @@ def forward_merging(
     if tensor_layout == "HND":
         b, h_qo, qo_len, head_dim = qcode.shape
         _, h_kv, kv_len, _ = kcode.shape
-        stride_bz_q, stride_h_q, stride_seq_q = (
-            qcode.stride(0),
-            qcode.stride(1),
-            qcode.stride(2),
-        )
-        stride_bz_k, stride_h_k, stride_seq_k = (
-            kcode.stride(0),
-            kcode.stride(1),
-            kcode.stride(2),
-        )
-        stride_bz_v, stride_h_v, stride_seq_v = v.stride(0), v.stride(1), v.stride(2)
-        stride_bz_o, stride_h_o, stride_seq_o = o.stride(0), o.stride(1), o.stride(2)
+        stride_bz_q, stride_h_q, stride_seq_q = qcode.strides[0], qcode.strides[1], qcode.strides[2]
+        stride_bz_k, stride_h_k, stride_seq_k = kcode.strides[0], kcode.strides[1], kcode.strides[2]
+        stride_bz_v, stride_h_v, stride_seq_v = v.strides[0], v.strides[1], v.strides[2]
+        stride_bz_o, stride_h_o, stride_seq_o = o.strides[0], o.strides[1], o.strides[2]
     elif tensor_layout == "NHD":
         b, qo_len, h_qo, head_dim = qcode.shape
         _, kv_len, h_kv, _ = kcode.shape
-        stride_bz_q, stride_h_q, stride_seq_q = (
-            qcode.stride(0),
-            qcode.stride(2),
-            qcode.stride(1),
-        )
-        stride_bz_k, stride_h_k, stride_seq_k = (
-            kcode.stride(0),
-            kcode.stride(2),
-            kcode.stride(1),
-        )
-        stride_bz_v, stride_h_v, stride_seq_v = v.stride(0), v.stride(2), v.stride(1)
-        stride_bz_o, stride_h_o, stride_seq_o = o.stride(0), o.stride(2), o.stride(1)
+        stride_bz_q, stride_h_q, stride_seq_q = qcode.strides[0], qcode.strides[2], qcode.strides[1]
+        stride_bz_k, stride_h_k, stride_seq_k = kcode.strides[0], kcode.strides[2], kcode.strides[1]
+        stride_bz_v, stride_h_v, stride_seq_v = v.strides[0], v.strides[2], v.strides[1]
+        stride_bz_o, stride_h_o, stride_seq_o = o.strides[0], o.strides[2], o.strides[1]
     else:
         raise ValueError(f"tensor_layout {tensor_layout} not supported")
     HEAD_DIM_K = head_dim

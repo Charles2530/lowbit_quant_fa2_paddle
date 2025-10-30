@@ -18,11 +18,11 @@ def pipeline(args, logger):
     batch_size = args.batch_size
     num_heads = args.num_heads
     head_dim = args.head_dim
-    seq_lens = [128, 1024, 2048, 4096, 8192, 16384, 32768]
+    seq_lens = [128, 1024, 2048, 4096, 8192]
     assert args.method in ["fa2", "torch", "xformers"]
->>>>>>    torch.backends.cuda.enable_flash_sdp(args.method == "fa2")
->>>>>>    torch.backends.cuda.enable_math_sdp(args.method == "torch")
->>>>>>    torch.backends.cuda.enable_mem_efficient_sdp(args.method == "xformers")
+# >>>>>>    torch.backends.cuda.enable_flash_sdp(args.method == "fa2")
+# >>>>>>    torch.backends.cuda.enable_math_sdp(args.method == "torch")
+# >>>>>>    torch.backends.cuda.enable_mem_efficient_sdp(args.method == "xformers")
     logger.log(f"Triton QK Int8 PV FP16: {args.method}")
     logger.log(
         f"batch_size: {batch_size}, num_heads: {num_heads}, head_dim: {head_dim}"

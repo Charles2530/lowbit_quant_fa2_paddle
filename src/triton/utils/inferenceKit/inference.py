@@ -14,8 +14,8 @@ from .utils import InferenceConfig
 
 def inference(
     model: BaseInferenceModel,
->>>>>>    dataloader: torch.utils.data.DataLoader,
->>>>>>    accelerator: accelerate.Accelerator,
+    dataloader: torch.utils.data.DataLoader,
+    accelerator: accelerate.Accelerator,
     output_dir: str,
     **kwargs
 ) -> List[Dict]:

@@ -38,10 +38,6 @@ from .triton.quant_per_block import per_block_int8 as per_block_int8_triton
 from .triton.quant_per_block_varlen import \
     per_block_int8 as per_block_int8_varlen_triton
 from .triton.quant_per_thread import per_thread_int8 as per_thread_int8_triton
-from .triton.quantization.attn_qk_int2_per_block import \
-    forward_merging as attn_false_int2
-from .triton.quantization.attn_qk_int2_per_block_causal import \
-    forward_merging as attn_true_int2
 from .triton.quantization.attn_qk_int4_per_block import \
     forward_merging as attn_false_int4
 from .triton.quantization.attn_qk_int4_per_block_causal import \
@@ -271,7 +267,6 @@ def sageattn_qk_int8_pv_fp16_triton(
     - `smooth_k` will introduce slight overhead but will improve the accuracy under most circumstances.
     """
     dtype = q.dtype
-    assert q.is_cuda, "Input tensors must be on cuda."
     assert dtype in [
         paddle.float16,
         paddle.bfloat16,
@@ -279,7 +274,7 @@ def sageattn_qk_int8_pv_fp16_triton(
     assert q.place == k.place == v.place, "All tensors must be on the same device."
     assert q.dtype == k.dtype == v.dtype, "All tensors must have the same dtype."
     paddle.device.set_device(device=device2str(v.place))
-    head_dim_og = q.size(-1)
+    head_dim_og = q.shape[-1]
     if head_dim_og < 64:
         q = paddle.compat.pad(q, (0, 64 - head_dim_og))
         k = paddle.compat.pad(k, (0, 64 - head_dim_og))
@@ -291,7 +286,7 @@ def sageattn_qk_int8_pv_fp16_triton(
     elif head_dim_og > 128:
         raise ValueError(f"Unsupported head_dim: {head_dim_og}")
     assert (
-        q.stride(-1) == 1 and k.stride(-1) == 1 and v.stride(-1) == 1
+        q.strides[-1] == 1 and k.strides[-1] == 1 and v.strides[-1] == 1
     ), "Last dim of qkv must be contiguous."
     seq_dim = 1 if tensor_layout == "NHD" else 2
     if smooth_k:
@@ -423,7 +418,6 @@ def sageattn_varlen(
     - `smooth_k` will introduce slight overhead but will improve the accuracy under most circumstances.
     """
     dtype = q.dtype
-    assert q.is_cuda, "Input tensors must be on cuda."
     assert dtype in [
         paddle.float16,
         paddle.bfloat16,
@@ -431,7 +425,7 @@ def sageattn_varlen(
     assert q.place == k.place == v.place, "All tensors must be on the same device."
     assert q.dtype == k.dtype == v.dtype, "All tensors must have the same dtype."
     paddle.device.set_device(device=device2str(v.place))
-    head_dim_og = q.size(-1)
+    head_dim_og = q.shape[-1]
     if head_dim_og < 64:
         q = paddle.compat.pad(q, (0, 64 - head_dim_og))
         k = paddle.compat.pad(k, (0, 64 - head_dim_og))
@@ -443,7 +437,7 @@ def sageattn_varlen(
     elif head_dim_og > 128:
         raise ValueError(f"Unsupported head_dim: {head_dim_og}")
     assert (
-        q.stride(-1) == 1 and k.stride(-1) == 1 and v.stride(-1) == 1
+        q.strides[-1] == 1 and k.strides[-1] == 1 and v.strides[-1] == 1
     ), "Last dim of qkv must be contiguous."
     assert (
         cu_seqlens_q.is_contiguous() and cu_seqlens_k.is_contiguous()
@@ -587,7 +581,6 @@ def sageattn_qk_int8_pv_fp16_cuda(
     - `smooth_k` will introduce slight overhead but will improve the accuracy under most circumstances.
     """
     dtype = q.dtype
-    assert q.is_cuda, "Input tensors must be on cuda."
     assert dtype in [
         paddle.float16,
         paddle.bfloat16,
@@ -603,7 +596,7 @@ def sageattn_qk_int8_pv_fp16_cuda(
     _is_caual = 1 if is_causal else 0
     _qk_quant_gran = 3 if qk_quant_gran == "per_thread" else 2
     _return_lse = 1 if return_lse else 0
-    head_dim_og = q.size(-1)
+    head_dim_og = q.shape[-1]
     if head_dim_og < 64:
         q = paddle.compat.pad(q, (0, 64 - head_dim_og))
         k = paddle.compat.pad(k, (0, 64 - head_dim_og))
@@ -615,7 +608,7 @@ def sageattn_qk_int8_pv_fp16_cuda(
     elif head_dim_og > 128:
         raise ValueError(f"Unsupported head_dim: {head_dim_og}")
     assert (
-        q.stride(-1) == 1 and k.stride(-1) == 1 and v.stride(-1) == 1
+        q.strides[-1] == 1 and k.strides[-1] == 1 and v.strides[-1] == 1
     ), "Last dim of qkv must be contiguous."
     if sm_scale is None:
         sm_scale = head_dim_og**-0.5
@@ -827,7 +820,6 @@ def sageattn_qk_int8_pv_fp8_cuda(
     - `smooth_k` will introduce slight overhead but will improve the accuracy under most circumstances.
     """
     dtype = q.dtype
-    assert q.is_cuda, "Input tensors must be on cuda."
     assert dtype in [
         paddle.float16,
         paddle.bfloat16,
@@ -855,7 +847,7 @@ def sageattn_qk_int8_pv_fp8_cuda(
     elif head_dim_og > 128:
         raise ValueError(f"Unsupported head_dim: {head_dim_og}")
     assert (
-        q.stride(-1) == 1 and k.stride(-1) == 1 and v.stride(-1) == 1
+        q.strides[-1] == 1 and k.strides[-1] == 1 and v.strides[-1] == 1
     ), "Last dim of qkv must be contiguous."
     if sm_scale is None:
         sm_scale = head_dim_og**-0.5
@@ -963,7 +955,6 @@ def sageattn_qk_int4_pv_fp16_triton(
     **kwargs: Any,
 ) -> paddle.Tensor:
     dtype = q.dtype
-    assert q.is_cuda, "Input tensors must be on cuda."
     assert dtype in [
         paddle.float16,
         paddle.bfloat16,
@@ -971,10 +962,7 @@ def sageattn_qk_int4_pv_fp16_triton(
     assert q.place == k.place == v.place, "All tensors must be on the same device."
     assert q.dtype == k.dtype == v.dtype, "All tensors must have the same dtype."
     paddle.device.set_device(device=device2str(v.place))
-    import pdb
-
-    pdb.set_trace()
-    head_dim_og = q.size(-1)
+    head_dim_og = q.shape[-1]
     if head_dim_og < 64:
         q = paddle.compat.pad(q, (0, 64 - head_dim_og))
         k = paddle.compat.pad(k, (0, 64 - head_dim_og))
@@ -986,7 +974,7 @@ def sageattn_qk_int4_pv_fp16_triton(
     elif head_dim_og > 128:
         raise ValueError(f"Unsupported head_dim: {head_dim_og}")
     assert (
-        q.stride(-1) == 1 and k.stride(-1) == 1 and v.stride(-1) == 1
+        q.strides[-1] == 1 and k.strides[-1] == 1 and v.strides[-1] == 1
     ), "Last dim of qkv must be contiguous."
     seq_dim = 1 if tensor_layout == "NHD" else 2
     if smooth_k:
@@ -1017,12 +1005,10 @@ def sageattn_qk_int4_pv_fp16_triton(
     if is_causal:
         o, lse = attn_true_int4(
             q_int,
-            q_scale,
-            q_mn,
             k_int,
-            k_scale,
-            k_mn,
             v,
+            q_scale,
+            k_scale,
             tensor_layout=tensor_layout,
             output_dtype=dtype,
             return_lse=return_lse,
@@ -1030,112 +1016,10 @@ def sageattn_qk_int4_pv_fp16_triton(
     else:
         o, lse = attn_false_int4(
             q_int,
-            q_scale,
-            q_mn,
             k_int,
-            k_scale,
-            k_mn,
             v,
-            tensor_layout=tensor_layout,
-            output_dtype=dtype,
-            return_lse=return_lse,
-        )
-    o = o[..., :head_dim_og]
-    if return_lse:
-        return (
-            o,
-            lse / 1.44269504 + lse_correction * sm_scale
-            if smooth_k
-            else lse / 1.44269504,
-        )
-    else:
-        return o
-
-
-# >>>>>>@torch.compiler.disable
-def sageattn_qk_int2_pv_fp16_triton(
-    q: paddle.Tensor,
-    k: paddle.Tensor,
-    v: paddle.Tensor,
-    tensor_layout: str = "HND",
-    quantization_backend: str = "triton",
-    is_causal: bool = False,
-    sm_scale: Optional[float] = None,
-    smooth_k: bool = True,
-    return_lse: bool = False,
-    **kwargs: Any,
-) -> paddle.Tensor:
-    dtype = q.dtype
-    assert q.is_cuda, "Input tensors must be on cuda."
-    assert dtype in [
-        paddle.float16,
-        paddle.bfloat16,
-    ], "Input tensors must be in dtype of torch.float16 or torch.bfloat16"
-    assert q.place == k.place == v.place, "All tensors must be on the same device."
-    assert q.dtype == k.dtype == v.dtype, "All tensors must have the same dtype."
-    paddle.device.set_device(device=device2str(v.place))
-    head_dim_og = q.size(-1)
-    if head_dim_og < 64:
-        q = paddle.compat.pad(q, (0, 64 - head_dim_og))
-        k = paddle.compat.pad(k, (0, 64 - head_dim_og))
-        v = paddle.compat.pad(v, (0, 64 - head_dim_og))
-    elif head_dim_og > 64 and head_dim_og < 128:
-        q = paddle.compat.pad(q, (0, 128 - head_dim_og))
-        k = paddle.compat.pad(k, (0, 128 - head_dim_og))
-        v = paddle.compat.pad(v, (0, 128 - head_dim_og))
-    elif head_dim_og > 128:
-        raise ValueError(f"Unsupported head_dim: {head_dim_og}")
-    assert (
-        q.stride(-1) == 1 and k.stride(-1) == 1 and v.stride(-1) == 1
-    ), "Last dim of qkv must be contiguous."
-    seq_dim = 1 if tensor_layout == "NHD" else 2
-    if smooth_k:
-        km = k.mean(dim=seq_dim, keepdim=True)
-        if return_lse:
-            if tensor_layout == "NHD":
-                lse_correction = (
-                    paddle.matmul(q.transpose(1, 2), km.transpose(1, 2).transpose(2, 3))
-                    .squeeze(-1)
-                    .to(paddle.float32)
-                )
-            else:
-                lse_correction = (
-                    paddle.matmul(q, km.transpose(2, 3)).squeeze(-1).to(paddle.float32)
-                )
-    else:
-        km = None
-    if dtype == paddle.bfloat16 or dtype == paddle.float32:
-        v = v.to(paddle.float16)
-    if sm_scale is None:
-        sm_scale = 1.0 / head_dim_og**0.5
-    q_int, q_scale, q_mn = triton_quantize_and_pack_along_last_dim(
-        data=q, group_size=32, bit=8
-    )
-    k_int, k_scale, k_mn = triton_quantize_and_pack_along_last_dim(
-        data=k, group_size=32, bit=2
-    )
-    if is_causal:
-        o, lse = attn_true_int2(
-            q_int,
             q_scale,
-            q_mn,
-            k_int,
             k_scale,
-            k_mn,
-            v,
-            tensor_layout=tensor_layout,
-            output_dtype=dtype,
-            return_lse=return_lse,
-        )
-    else:
-        o, lse = attn_false_int2(
-            q_int,
-            q_scale,
-            q_mn,
-            k_int,
-            k_scale,
-            k_mn,
-            v,
             tensor_layout=tensor_layout,
             output_dtype=dtype,
             return_lse=return_lse,
@@ -1173,10 +1057,8 @@ def select_quantization(q, k, v):
         return "FP16"
     elif avg_scale > 0.05:
         return "INT8"
-    elif avg_scale > 0.01:
-        return "INT4"
     else:
-        return "INT2"
+        return "INT4"
 
 
 def sageattn_multi_precision(
@@ -1190,12 +1072,9 @@ def sageattn_multi_precision(
     **kwargs: Any,
 ):
     type = select_quantization(q, k, v)
-    cnt = [0, 0, 0, 0]
     if type == "FP16":
-        cnt[0] += 1
         return default_attn(q, k, v, is_causal=is_causal)
     elif type == "INT8":
-        cnt[1] += 1
         return sageattn_qk_int8_pv_fp16_triton(
             q,
             k,
@@ -1205,8 +1084,7 @@ def sageattn_multi_precision(
             sm_scale=sm_scale,
             return_lse=return_lse,
         )
-    elif type == "INT4":
-        cnt[2] += 1
+    else:
         return sageattn_qk_int4_pv_fp16_triton(
             q,
             k,
@@ -1216,17 +1094,3 @@ def sageattn_multi_precision(
             sm_scale=sm_scale,
             return_lse=return_lse,
         )
-    else:
-        cnt[3] += 1
-        return sageattn_qk_int2_pv_fp16_triton(
-            q,
-            k,
-            v,
-            tensor_layout=tensor_layout,
-            is_causal=is_causal,
-            sm_scale=sm_scale,
-            return_lse=return_lse,
-        )
-    print(
-        f"Quantization counts: FP16: {cnt[0]}, INT8: {cnt[1]}, INT4: {cnt[2]}, INT2: {cnt[3]}"
-    )

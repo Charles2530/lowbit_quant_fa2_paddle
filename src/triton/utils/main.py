@@ -70,7 +70,7 @@ def parse_args():
 def main():
     args = parse_args()
     args = vars(args)
->>>>>>    accelerator = accelerate.Accelerator()
+    accelerator = accelerate.Accelerator()
     accelerator.even_batches = False
     logger = utils.get_logger("MAIN")
     device_map = "auto" if args.pop("shard") else None
@@ -106,7 +106,7 @@ def main():
     model.eval()
     replace_attention_layers(model)
     dataset = supported_dataset[args.data]()
->>>>>>    dataloader = torch.utils.data.DataLoader(
+    dataloader = torch.utils.data.DataLoader(
         dataset=dataset, shuffle=False, batch_size=1, collate_fn=lambda x: x[0]
     )
     dataloader = accelerator.prepare(dataloader)
@@ -120,7 +120,7 @@ def main():
         else:
             work_dir = utils.default_work_dir(args, final_inference_config)
             output_dir = utils.get_outdir(work_dir)
->>>>>>    output_dir = accelerate.utils.broadcast_object_list([output_dir], from_process=0)[0]
+    output_dir = accelerate.utils.broadcast_object_list([output_dir], from_process=0)[0]
     if accelerator.is_main_process:
         final_inference_config.to_json(os.path.join(output_dir, "config.json"))
     results = inference(model, dataloader, accelerator, output_dir)

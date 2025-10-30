@@ -16,8 +16,8 @@ def get_config_from_args(args):
 
 
 def update_single_config(
->>>>>>    config: transformers.generation.GenerationConfig, copy=False, **kwargs
->>>>>>) -> Tuple[transformers.generation.GenerationConfig, Dict, Dict]:
+    config: transformers.generation.GenerationConfig, copy=False, **kwargs
+) -> Tuple[transformers.generation.GenerationConfig, Dict, Dict]:
     if copy:
         config = deepcopy(config)
     updated_configs = {}
@@ -46,12 +46,12 @@ def convert_to_str(obj):
 class InferenceConfig:
     def __init__(
         self,
->>>>>>        config: Optional[transformers.generation.GenerationConfig] = None,
->>>>>>        llm_config: Optional[transformers.generation.GenerationConfig] = None,
->>>>>>        prm_config: Optional[transformers.generation.GenerationConfig] = None,
+        config: Optional[transformers.generation.GenerationConfig] = None,
+        llm_config: Optional[transformers.generation.GenerationConfig] = None,
+        prm_config: Optional[transformers.generation.GenerationConfig] = None,
     ) -> None:
->>>>>>        self.config = config or transformers.generation.GenerationConfig()
->>>>>>        self.llm_config = llm_config or transformers.generation.GenerationConfig()
+        self.config = config or transformers.generation.GenerationConfig()
+        self.llm_config = llm_config or transformers.generation.GenerationConfig()
         self.prm_config = prm_config
 
     @classmethod
@@ -59,7 +59,7 @@ class InferenceConfig:
         config = load(path)
         for k, v in config.items():
             config[k] = (
->>>>>>                transformers.generation.GenerationConfig.from_dict(v) if v else None
+                transformers.generation.GenerationConfig.from_dict(v) if v else None
             )
         inference_config = InferenceConfig(**config)
         return inference_config
@@ -75,9 +75,9 @@ class InferenceConfig:
 
     def update_config(
         self,
->>>>>>        config: Optional[transformers.generation.GenerationConfig] = None,
->>>>>>        llm_config: Optional[transformers.generation.GenerationConfig] = None,
->>>>>>        prm_config: Optional[transformers.generation.GenerationConfig] = None,
+        config: Optional[transformers.generation.GenerationConfig] = None,
+        llm_config: Optional[transformers.generation.GenerationConfig] = None,
+        prm_config: Optional[transformers.generation.GenerationConfig] = None,
         **kwargs
     ):
         gen_dict = kwargs

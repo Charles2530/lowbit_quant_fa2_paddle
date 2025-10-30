@@ -180,8 +180,6 @@ def forward(
     BLOCK_N = 64
     stage = 1
     o = paddle.empty(q.shape, dtype=output_dtype).to(q.place)
-    o_scale = paddle.empty(q_scale.shape, dtype=paddle.float16).to(q.place)
-    o_mn = paddle.empty(q_scale.shape, dtype=paddle.float16).to(q.place)
     if tensor_layout == "HND":
         b, h_qo, qo_len, head_dim = q.shape
         _, h_kv, kv_len, _ = k.shape
@@ -227,8 +225,8 @@ def forward(
         stride_seq_o,
         qo_len,
         kv_len,
-        h_qo,
-        num_kv_groups,
+        H=h_qo,
+        num_kv_groups=num_kv_groups,
         BLOCK_M=BLOCK_M,
         BLOCK_N=BLOCK_N,
         HEAD_DIM=HEAD_DIM_K,

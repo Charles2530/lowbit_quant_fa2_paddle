@@ -8,7 +8,7 @@ import triton.language as tl
 
 def is_hip() -> bool:
     """Return whether it is HIP on the AMD ROCm platform."""
->>>>>>    return torch.version.hip is not None
+    return torch.version.hip is not None
 
 
 is_hip_ = is_hip()

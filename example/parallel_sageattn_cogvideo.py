@@ -91,7 +91,7 @@ def main():
             f"{input_config.width}x{input_config.height}x{input_config.num_frames}"
         )
         output_filename = f"results/cogvideox_{parallel_info}_{sage_tag}_{world_size}gpu_{resolution}_{prompt_tag}.mp4"
->>>>>>        diffusers.utils.export_to_video(output, output_filename, fps=8)
+        diffusers.utils.export_to_video(output, output_filename, fps=8)
         print(f"output saved to {output_filename}")
     if get_world_group().rank == get_world_group().world_size - 1:
         print(

@@ -156,7 +156,7 @@ def benchmark_triton_attention_int8_baseline(
             verbose=False,
             desc="Triton",
         )
-        flops_per_time = flops / time.mean * 1e-12
+        flops_per_time = flops / time.mean() * 1e-12
         output, _ = forward_func(q, k, v, q_scale, k_scale, output_dtype=output_dtype)
         target = paddle.nn.functional.scaled_dot_product_attention(
             q.transpose([0, 2, 1, 3]),
@@ -168,11 +168,11 @@ def benchmark_triton_attention_int8_baseline(
         loss = loss_fn(output, target)
         if logger:
             logger.log(
-                f"{seq_len} flops: {flops_per_time:.2f} TFLOP/s, {time.mean * 1000.0:.2f} ms,Total time {time.mean * repeats:.2f} s,Loss {loss:.2f}"
+                f"{seq_len} flops: {flops_per_time:.2f} TFLOP/s, {time.mean() * 1000.0:.2f} ms,Total time {time.mean() * repeats:.2f} s,Loss {loss:.2f}"
             )
         else:
             print(
-                f"{seq_len} flops: {flops_per_time:.2f} TFLOP/s, {time.mean * 1000.0:.2f} ms,Total time {time.mean * repeats:.2f} s,Loss {loss:.2f}"
+                f"{seq_len} flops: {flops_per_time:.2f} TFLOP/s, {time.mean() * 1000.0:.2f} ms,Total time {time.mean() * repeats:.2f} s,Loss {loss:.2f}"
             )
 
 
@@ -242,7 +242,12 @@ def benchmark_triton_attention_int8(
             q_codes, q_scale, k_codes, k_scale = per_thread_int8(prepare_q, prepare_k)
         for _ in range(5):
             forward_func(
-                q_codes, k_codes, v, q_scale, k_scale, output_dtype=output_dtype
+                q_codes, 
+                k_codes, 
+                v, 
+                q_scale, 
+                k_scale, 
+                output_dtype=output_dtype
             )
         paddle.device.synchronize()
 # >>>>>>        _, time = flash_attn.utils.benchmark.benchmark_forward(
@@ -260,15 +265,20 @@ def benchmark_triton_attention_int8(
         )
         flops_per_time = flops / time.mean() * 1e-12
         q_output, _ = forward_func(
-            q_codes, k_codes, v, q_scale, k_scale, output_dtype=output_dtype
+            q_codes, 
+            k_codes, 
+            v, 
+            q_scale, 
+            k_scale, 
+            output_dtype=output_dtype
         )
-        # import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()   
         target = paddle.nn.functional.scaled_dot_product_attention(
-            prepare_q,
-            prepare_k,
-            v,
+            prepare_q.transpose([0, 2, 1, 3]),
+            prepare_k.transpose([0, 2, 1, 3]),
+            v.transpose([0, 2, 1, 3]),
             is_causal=causal,
-        )
+        ).transpose([0, 2, 1, 3])
         loss_fn = paddle.nn.MSELoss()
         loss = loss_fn(q_output, target)
         if logger:
@@ -330,12 +340,13 @@ def benchmark_triton_attention_int4(
             dtype=paddle.int32,
         ).astype(k_dtype)
         v = paddle.randn(
-            batch_size, num_heads, seq_len, head_dim, dtype=v_dtype, device="cuda"
+            (batch_size, num_heads, seq_len, head_dim), dtype=v_dtype
         )
-        quant_type = 1
+        v = v.cuda()
+        quant_type = 0
         if quant_type == 0:
             q_codes, q_scale, q_mn = triton_quantize_and_pack_along_last_dim(
-                data=prepare_q, group_size=32, bit=4
+                data=prepare_q, group_size=32, bit=8
             )
             k_codes, k_scale, k_mn = triton_quantize_and_pack_along_last_dim(
                 data=prepare_k, group_size=32, bit=4
@@ -346,25 +357,35 @@ def benchmark_triton_attention_int4(
             q_codes, q_scale, k_codes, k_scale = per_thread_int4(prepare_q, prepare_k)
         for _ in range(5):
             forward_func(
-                q_codes, q_scale, k_codes, k_scale, v, output_dtype=output_dtype
+                q_codes, 
+                k_codes, 
+                v, 
+                q_scale,  
+                k_scale,
+                output_dtype=output_dtype
             )
         paddle.device.synchronize()
 # >>>>>>        _, time = flash_attn.utils.benchmark.benchmark_forward(
         _, time = benchmark_forward(
             forward_func,
             q_codes,
-            q_scale,
             k_codes,
-            k_scale,
             v,
+            q_scale,
+            k_scale,
             output_dtype=output_dtype,
             repeats=repeats,
             verbose=False,
             desc="Triton",
         )
-        flops_per_time = flops / time.mean * 1e-12
+        flops_per_time = flops / time.mean() * 1e-12
         output, lse = forward_func(
-            q_codes, q_scale, k_codes, k_scale, v, output_dtype=output_dtype
+            q_codes, 
+            k_codes, 
+            v, 
+            q_scale, 
+            k_scale, 
+            output_dtype=output_dtype
         )
         target = paddle.nn.functional.scaled_dot_product_attention(
             prepare_q.transpose([0, 2, 1, 3]),
@@ -373,135 +394,15 @@ def benchmark_triton_attention_int4(
             is_causal=causal,
         ).transpose([0, 2, 1, 3])
         loss_fn = paddle.nn.MSELoss()
-        try:
-            loss = loss_fn(output, target)
-        except:
-            loss = paddle.inf
-            import pdb
-
-            pdb.set_trace()
-            pass
+        loss = loss_fn(output, target)
         if logger:
             logger.log(
-                f"{seq_len} flops: {flops_per_time:.2f} TFLOP/s, {time.mean * 1000.0:.2f} ms,Total time {time.mean * repeats:.2f} s,Loss {loss:.2f}"
+                f"{seq_len} flops: {flops_per_time:.2f} TFLOP/s, {time.mean() * 1000.0:.2f} ms,Total time {time.mean() * repeats:.2f} s,Loss {loss:.2f}"
             )
         else:
             print(
-                f"{seq_len} flops: {flops_per_time:.2f} TFLOP/s, {time.mean * 1000.0:.2f} ms,Total time {time.mean * repeats:.2f} s,Loss {loss:.2f}"
+                f"{seq_len} flops: {flops_per_time:.2f} TFLOP/s, {time.mean() * 1000.0:.2f} ms,Total time {time.mean() * repeats:.2f} s,Loss {loss:.2f}"
             )
-
-
-def benchmark_triton_attention_q_int8_k_int4(
-    forward_func,
-    seq_lens,
-    num_heads,
-    batch_size,
-    head_dim,
-    q_dtype=paddle.float16,
-    k_dtype=paddle.float16,
-    v_dtype=paddle.float16,
-    output_dtype=paddle.float16,
-    repeats=100,
-    causal=False,
-    logger=None,
-):
-    """
-    Benchmark attention forward functions with different sequence lengths.
-
-    Args:
-        forward_func (callable): The forward function to benchmark.
-        seq_lens (list or set): Sequence lengths to test.
-        num_heads (int): Number of attention heads.
-        batch_size (int): batch_size size.
-        head_dim (int): Dimension of each attention head.
-        q_dtype (torch.dtype): Data type for query tensor.
-        k_dtype (torch.dtype): Data type for key tensor.
-        v_dtype (torch.dtype): Data type for value tensor.
-        q_scale_shape_divisor (int): Divisor to calculate query scale shape.
-        k_scale_shape_divisor (int): Divisor to calculate key scale shape.
-        output_dtype (torch.dtype): Data type for the output.
-        repeats (int): Number of repetitions for benchmarking.
-        causal (bool): Whether the forward function is causal.
-    """
-    for seq_len in seq_lens:
-        flops = 4 * num_heads * batch_size * head_dim * seq_len * seq_len
-        if causal:
-            flops //= 2
-        prepare_q = paddle.randint(
-            low=-100,
-            high=100,
-            shape=(batch_size, num_heads, seq_len, head_dim),
-            dtype=paddle.int32,
-        ).astype(q_dtype)
-        prepare_k = paddle.randint(
-            low=-100,
-            high=100,
-            shape=(batch_size, num_heads, seq_len, head_dim),
-            dtype=paddle.int32,
-        ).astype(k_dtype)
-        v = paddle.randn(
-            batch_size, num_heads, seq_len, head_dim, dtype=v_dtype, device="cuda"
-        )
-        quant_type = 1
-        if quant_type == 0:
-            q_codes, q_scale, q_mn = triton_quantize_and_pack_along_last_dim(
-                data=prepare_q, group_size=32, bit=4
-            )
-            k_codes, k_scale, k_mn = triton_quantize_and_pack_along_last_dim(
-                data=prepare_k, group_size=32, bit=4
-            )
-        elif quant_type == 1:
-            q_codes, q_scale, k_codes, k_scale = per_block_q_int8_k_int4(
-                prepare_q, prepare_k
-            )
-        else:
-            q_codes, q_scale, k_codes, k_scale = per_thread_int4(prepare_q, prepare_k)
-        for _ in range(5):
-            forward_func(
-                q_codes, q_scale, k_codes, k_scale, v, output_dtype=output_dtype
-            )
-        paddle.device.synchronize()
-# >>>>>>        _, time = flash_attn.utils.benchmark.benchmark_forward(
-        _, time = benchmark_forward(
-            forward_func,
-            q_codes,
-            q_scale,
-            k_codes,
-            k_scale,
-            v,
-            output_dtype=output_dtype,
-            repeats=repeats,
-            verbose=False,
-            desc="Triton",
-        )
-        flops_per_time = flops / time.mean * 1e-12
-        output, lse = forward_func(
-            q_codes, q_scale, k_codes, k_scale, v, output_dtype=output_dtype
-        )
-        target = paddle.nn.functional.scaled_dot_product_attention(
-            prepare_q.transpose([0, 2, 1, 3]),
-            prepare_k.transpose([0, 2, 1, 3]),
-            v.transpose([0, 2, 1, 3]),
-            is_causal=causal,
-        ).transpose([0, 2, 1, 3])
-        loss_fn = paddle.nn.MSELoss()
-        try:
-            loss = loss_fn(output, target)
-        except:
-            loss = paddle.inf
-            import pdb
-
-            pdb.set_trace()
-            pass
-        if logger:
-            logger.log(
-                f"{seq_len} flops: {flops_per_time:.2f} TFLOP/s, {time.mean * 1000.0:.2f} ms,Total time {time.mean * repeats:.2f} s,Loss {loss:.2f}"
-            )
-        else:
-            print(
-                f"{seq_len} flops: {flops_per_time:.2f} TFLOP/s, {time.mean * 1000.0:.2f} ms,Total time {time.mean * repeats:.2f} s,Loss {loss:.2f}"
-            )
-
 
 def benchmark_triton_attention_int2(
     forward_func,
@@ -552,7 +453,7 @@ def benchmark_triton_attention_int2(
             dtype=paddle.int32,
         ).astype(k_dtype)
         v = paddle.randn(
-            batch_size, num_heads, seq_len, head_dim, dtype=v_dtype, device="cuda"
+            (batch_size, num_heads, seq_len, head_dim), dtype=v_dtype, device="cuda"
         )
         q_codes, q_scale, q_mn = triton_quantize_and_pack_along_last_dim(
             prepare_q, group_size=32, bit=8
@@ -562,34 +463,35 @@ def benchmark_triton_attention_int2(
         )
         for _ in range(5):
             forward_func(
-                q_codes,
-                q_scale,
-                q_mn,
-                k_codes,
+                q_codes, 
+                k_codes, 
+                v, 
+                q_scale,  
                 k_scale,
-                k_mn,
-                v,
-                output_dtype=output_dtype,
+                output_dtype=output_dtype
             )
         paddle.device.synchronize()
 # >>>>>>        _, time = flash_attn.utils.benchmark.benchmark_forward(
         _, time = benchmark_forward(
             forward_func,
             q_codes,
-            q_scale,
-            q_mn,
             k_codes,
-            k_scale,
-            k_mn,
             v,
+            q_scale,
+            k_scale,
             output_dtype=output_dtype,
             repeats=repeats,
             verbose=False,
             desc="Triton",
         )
-        flops_per_time = flops / time.mean * 1e-12
+        flops_per_time = flops / time.mean() * 1e-12
         output, lse = forward_func(
-            q_codes, q_scale, q_mn, k_codes, k_scale, k_mn, v, output_dtype=output_dtype
+            q_codes, 
+            k_codes, 
+            v, 
+            q_scale, 
+            k_scale, 
+            output_dtype=output_dtype
         )
         target = paddle.nn.functional.scaled_dot_product_attention(
             prepare_q.transpose([0, 2, 1, 3]),
@@ -601,13 +503,12 @@ def benchmark_triton_attention_int2(
         loss = loss_fn(output, target)
         if logger:
             logger.log(
-                f"{seq_len} flops: {flops_per_time:.2f} TFLOP/s, {time.mean * 1000.0:.2f} ms,Total time {time.mean * repeats:.2f} s,Loss {loss:.2f}"
+                f"{seq_len} flops: {flops_per_time:.2f} TFLOP/s, {time.mean() * 1000.0:.2f} ms,Total time {time.mean() * repeats:.2f} s,Loss {loss:.2f}"
             )
         else:
             print(
-                f"{seq_len} flops: {flops_per_time:.2f} TFLOP/s, {time.mean * 1000.0:.2f} ms,Total time {time.mean * repeats:.2f} s,Loss {loss:.2f}"
+                f"{seq_len} flops: {flops_per_time:.2f} TFLOP/s, {time.mean() * 1000.0:.2f} ms,Total time {time.mean() * repeats:.2f} s,Loss {loss:.2f}"
             )
-
 
 def benchmark_triton_attention(
     forward_func,
