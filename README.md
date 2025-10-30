@@ -1,168 +1,176 @@
-# SageAttention
-We are continuously updating more features. You could **Star** and **Watch** our repository to stay updated.
+# Low-bit FlashAttention Accelerated Operator Design Based on Triton (PaddlePaddle Version)
 
----
-This repository provides the official implementation of SageAttention and SageAttention2.
+[![arXiv](https://img.shields.io/badge/arXiv-ICCVW2025-b31b1b.svg)](https://openaccess.thecvf.com/content/ICCV2025W/ECLR/papers/Du_Low-bit_FlashAttention_Accelerated_Operator_Design_Based_on_Triton_ICCVW_2025_paper.pdf)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-**SageAttention: Accurate 8-Bit Attention for Plug-and-play Inference Acceleration**  
-Paper: https://arxiv.org/abs/2410.02367  
-Jintao Zhang, Jia Wei, Haofeng Huang, Pengle Zhang, Jun Zhu, Jianfei Chen
+This repository provides the **PaddlePaddle** implementation of low-bit FlashAttention, offering 2.4× kernel speedup and 1.2× end-to-end inference speedup compared to FlashAttention-2 while maintaining accuracy.
 
-**SageAttention2: Efficient Attention with Thorough Outlier Smoothing and Per-thread INT4 Quantization**  
-Paper: https://arxiv.org/abs/2411.10958  
-Jintao Zhang, Haofeng Huang, Pengle Zhang, Jia Wei, Jun Zhu, Jianfei Chen
+📌 **Project Paper**: [Low-bit FlashAttention Accelerated Operator Design Based on Triton](https://openaccess.thecvf.com/content/ICCV2025W/ECLR/papers/Du_Low-bit_FlashAttention_Accelerated_Operator_Design_Based_on_Triton_ICCVW_2025_paper.pdf) (ICCV 2025 Workshop)
 
-![Local Image](./assets/2.png)
+## 🌟 Key Features
 
-## Beta Version of SageAttention2
-This is a beta release of SageAttention2. We welcome any feedback on accuracy, performance issues, bugs, feature requests, or suggestions. Please feel free to open an issue or launch a pull request!
+- **Mixed-precision Quantization**: Supports INT2/4/8 for QK^T and FP8/FP16 for PV
+- **Operator Fusion**: Fuses dequantization with matrix multiplication to reduce memory access
+- **Dynamic Quantization**: Allocates different bit widths based on importance
+- **PaddlePaddle Native**: Full implementation using PaddlePaddle framework
+- **Flexible Backends**: Both Triton and CUDA backends supported
+- **Long Sequence Support**: Optimized for handling long sequences (8K-128K)
 
-Current Features:
-+ INT8 quantization for $QK^\top$ with support for varying granularities
-+ FP8 quantization for $PV$
-+ FP32 buffer for $PV$ to improve accuracy in FP8 mma
-+ Support `torch.compile` with non-cudagraphs mode and distributed inference
+## 📊 Results
 
-For stable version, please use [SageAttention-1](https://github.com/thu-ml/SageAttention/tree/sageattention-1) branch.
+- **Kernel Speedup**: 2.4× faster than FlashAttention-2
+- **End-to-end Inference**: 1.2× speedup with minimal accuracy degradation
+- **Memory Efficiency**: Reduced memory footprint through operator fusion
 
-## Project Updates
-- **News** [2024-12-20]: Update the [SageAttention2 Paper](https://arxiv.org/abs/2411.10958).
-- **News** [2024-12-20]: We are excited to announce the release of SageAttention 2.0.1 Beta! In this version, we introduce a new feature: per-thread quantization, which offers finer granularity while maintaining hardware efficiency.
-- **News** [2024-11-21]: SageAttention 2.0.0 beta is released! Now SageAttention has measured speedup on L20, L40, A100, A800 and A6000 other than RTX3090 and RTX4090.
-- **News** [2024-11-12]: Support for `sageattn_varlen` is available now.
-- **News** [2024-11-11]: Support for different sequence length between `q` and `k,v`,  `(batch_size, head_num, seq_len, head_dim)` or `(batch_size, seq_len, head_num, head_dim)` input shapes, and `group-query attention` is available now.
+![Performance Comparison](./assets/2.png)
 
+## 🛠️ Installation
 
-## Base environment
-+ `python>=3.9`   
-+ `torch>=2.3.0`  
-+ `triton>=3.0.0` 
-+ `CUDA>=12.4` if you want to use fp8 else `CUDA>=12.0`
-+ `flash-attn` for benchmarking
+### Prerequisites
 
-## Installation
+- Python ≥ 3.9
+- PaddlePaddle nightly build
+- CUDA ≥ 12.0 (CUDA ≥ 12.4 for FP8 support)
+- Triton ≥ 3.0.0
 
-For the stable version or Triton-only version, refer to [SageAttention-1](https://github.com/thu-ml/SageAttention/tree/sageattention-1) and install using pip:
-```
-pip install sageattention==1.0.6
-```
+### Setup Environment
 
-To use SageAttention 2.0.1, please compile from source:
-```
-git clone https://github.com/thu-ml/SageAttention.git
-cd sageattention 
-pip install -e . # or python setup.py install
+```bash
+# Clone the repository
+git clone https://github.com/Charles2530/lowbit_quant_fa2_paddle.git
+cd lowbit_quant_fa2_paddle
+
+# Setup environment
+bash script/setup_env.sh
+
+# Install dependencies
+pip install -e .
 ```
 
+## 🚀 Quick Start
 
-> **Note:** Currently, SageAttention is optimized for excellent performance on RTX4090, RTX3090, L20, and L40 GPUs. On A100, A800, and A6000 GPUs, performance is best with a `head_dim=128`, while `head_dim=64` is less optimal. Similarly, performance on the Hopper architecture is currently not optimal. We are actively working to enhance performance in these configurations.
+### Basic Usage
 
-
-## How to Use
 ```python
-from sageattention import sageattn
-attn_output = sageattn(q, k, v, tensor_layout="HND", is_causal=False)
+import paddle
+from src import sageattn_qk_int8_pv_fp16_triton
+
+# Create input tensors (FP16/BF16)
+batch_size, num_heads, seq_len, head_dim = 4, 32, 4096, 64
+q = paddle.randn([batch_size, num_heads, seq_len, head_dim], dtype=paddle.float16)
+k = paddle.randn([batch_size, num_heads, seq_len, head_dim], dtype=paddle.float16)
+v = paddle.randn([batch_size, num_heads, seq_len, head_dim], dtype=paddle.float16)
+
+# Run low-bit FlashAttention
+output = sageattn_qk_int8_pv_fp16_triton(
+    q=q, k=k, v=v,
+    tensor_layout="HND",
+    is_causal=False
+)
 ```
-+ `q, k, v` are **FP16/BF16** dtype with the shape `(batch_size, head_num, seq_len, head_dim)` using default `tensor_layout="HND"`. For shape `(batch_size, seq_len, head_num, head_dim)`, set `tensor_layout="NHD"`. 
-+ `is_causal` determines the use of a causal mask.
 
-### Available APIs:
-+ `sageattn`: Automatically selects the optimal kernel based on the GPU to achieve a good performance-accuracy trade-off.
-+ `sageattn_qk_int8_pv_fp16_triton`: INT8 quantization for $QK^\top$ and FP16 for $PV$ using Triton backend.
-+ `sageattn_qk_int8_pv_fp16_cuda`: INT8 quantization for $QK^\top$ and FP16 for $PV$ using CUDA backend.
-+ `sageattn_qk_int8_pv_fp8_cuda`: INT8 quantization for $QK^\top$ and FP8 for $PV$ using CUDA backend.
-+ `sageattn_varlen`: INT8 quantization for $QK^\top$ and FP16 for $PV$ using Triton backend. Support for varying sequence lengths within the same batch.
+### Available APIs
 
-For optimal speed and accuracy performance on custom devices and models, we strongly recommend referring to the [this file](./sageattention/core.py) for detailed guidance.
+- `sageattn_qk_int8_pv_fp16_triton`: INT8 QK^T + FP16 PV (Triton backend)
+- `sageattn_qk_int8_pv_fp8_cuda`: INT8 QK^T + FP8 PV (CUDA backend)
+- `sageattn_qk_int8_pv_fp16_cuda`: INT8 QK^T + FP16 PV (CUDA backend)
+- `sageattn_qk_int4_pv_fp16_triton`: INT4 QK^T + FP16 PV (Triton backend)
 
-> **Note:**
-Support for different sequence length between `q` and `k,v` and `group-query attention` is available.
+### Tensor Layout Options
 
+- `tensor_layout="HND"`: Shape `(batch_size, head_num, seq_len, head_dim)`
+- `tensor_layout="NHD"`: Shape `(batch_size, seq_len, head_num, head_dim)`
 
-## **Plug-and-play Example**
+## 📁 Project Structure
 
-**We can replace `scaled_dot_product_attention` easily.**  
-We will take [CogvideoX](https://huggingface.co/THUDM/CogVideoX-2b) as an example:
-
-**Just add the following codes and run!**
-```python
-from sageattention import sageattn
-import torch.nn.functional as F
-
-F.scaled_dot_product_attention = sageattn
 ```
-> **Note:** Not all models works with `F.scaled_dot_product_attention = sageattn`. Technically, you should replace the original Attention by modifying the `Attention Class` of the target model. For image and video models, we suggest only replacing the attention in DiT computation.
+lowbit_quant_fa2_paddle/
+├── src/                          # Main source code
+│   ├── core.py                   # Core API implementations
+│   ├── quant.py                  # Quantization utilities
+│   └── triton/                   # Triton kernels
+│       ├── attn_qk_int8_per_block.py
+│       ├── attn_qk_int4_per_block.py
+│       ├── attn_qk_int2_per_block.py
+│       ├── quant_per_block.py
+│       ├── quant_per_thread.py
+│       └── ...
+├── csrc/                         # CUDA kernels
+│   ├── qattn/                    # Quantized attention kernels
+│   └── fused/                    # Fused operations
+├── bench/                        # Benchmarking scripts
+│   ├── baseline/                 # Baseline comparisons
+│   ├── quant/                    # Quantization benchmarks
+│   └── video_test/               # Video model tests
+├── example/                      # Usage examples
+│   ├── sageattn_cogvideo.py     # CogVideoX example
+│   └── parallel_sageattn_cogvideo.py
+├── script/                       # Utility scripts
+│   ├── setup_env.sh             # Environment setup
+│   └── run_triton_bench_*.sh    # Benchmark scripts
+└── utils/                        # Utility functions
+```
 
-Specifically,
+## 🔬 Benchmarking
+
+### Run Benchmarks
+
+```bash
+# INT8 QK + FP16 PV benchmark
+bash script/run_triton_bench_qk_int8.sh
+
+# INT4 QK + FP16 PV benchmark
+bash script/run_triton_bench_qk_int4.sh
+
+# Mixed precision benchmark
+bash script/run_triton_bench_q_int8_k_int4.sh
+```
+
+### Test on CogVideoX
 
 ```bash
 cd example
 python sageattn_cogvideo.py --compile
 ```
 
-**You can get a lossless video in** `./example` **faster than by using** `python original_cogvideo.py --compile`
+## 📈 Performance
 
+*Detailed benchmark results coming soon. Check the `assets/` directory for GPU-specific performance graphs.*
 
+## 📝 Citation
 
+If you find this project useful, please cite our paper:
 
-## Performance
-### Speed of Kernels
-
-*`8+8` means the kernel with INT8 quantization for $QK^\top$ and FP8 quantization for $PV$. `8+16` uses FP16 for $PV$.*
-![Local Image](./assets/A100_hd128.png)
-
-![Local Image](./assets/A800_hd128.png)
-
-![Local Image](./assets/4090_hd64.png)
-
-![Local Image](./assets/4090_hd128.png)
-
-![Local Image](./assets/L20_hd64.png)
-
-![Local Image](./assets/L20_hd128.png)
-
-![Local Image](./assets/A6000_hd128.png)
-
-![Local Image](./assets/3090_hd64.png)
-
-![Local Image](./assets/3090_hd128.png)
-
-
-> **Note:** The TOPS results refer only to the Attention Kernel, excluding the quantization and smoothing. we use FP16 accumulator for FP16 $PV$, and FP32 accumulator for FP8 $PV$.
-
-### End-to-end Performance
-
-![Local Image](./assets/22.png)
-
-![Local Image](./assets/23.png)
-
-![Local Image](./assets/24.png)
-
-![Local Image](./assets/25.png)
-
-![Local Image](./assets/26.png)
-
-
-## Citation
-**If you use this code or find our work valuable, please cite:**
-```
-@misc{zhang2024sageattention,
-      title={SageAttention: Accurate 8-Bit Attention for Plug-and-play Inference Acceleration}, 
-      author={Jintao Zhang and Jia wei and Haofeng Huang and Pengle Zhang and Jun Zhu and Jianfei Chen},
-      year={2024},
-      eprint={2410.02367},
-      archivePrefix={arXiv},
-      primaryClass={cs.LG},
-      url={https://arxiv.org/abs/2410.02367}, 
-}
-
-@misc{zhang2024sageattention2,
-      title={SageAttention2: Efficient Attention with Thorough Outlier Smoothing and Per-thread INT4 Quantization}, 
-      author={Jintao Zhang and Haofeng Huang and Pengle Zhang and Jia Wei and Jun Zhu and Jianfei Chen},
-      year={2024},
-      eprint={2411.10958},
-      archivePrefix={arXiv},
-      primaryClass={cs.LG},
-      url={https://arxiv.org/abs/2411.10958}, 
+```bibtex
+@inproceedings{du2025low,
+  title={Low-bit FlashAttention Accelerated Operator Design Based on Triton},
+  author={Du, Jinyang and Guo, Jinyang and Ding, Yifu},
+  booktitle={Proceedings of the IEEE/CVF International Conference on Computer Vision Workshops (ICCVW)},
+  year={2025}
 }
 ```
+
+## 🙏 Acknowledgments
+
+This work was supported by:
+- Beijing Municipal Science and Technology Project (No. Z231100010323002)
+- National Natural Science Foundation of China (Nos. 62306025, 92367204)
+- CCF-Baidu Open Fund
+
+## 📄 License
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+
+## 🔗 Related Work
+
+This is the PaddlePaddle implementation of the low-bit FlashAttention work. The PyTorch version is available at:
+- [SageAttention (THU-ML)](https://github.com/thu-ml/SageAttention)
+
+## 📧 Contact
+
+For questions or issues, please open an issue on GitHub or contact:
+- Yifu Ding: yifuding@buaa.edu.cn
+
+---
+
+**Star ⭐ and Watch 👀 this repository to stay updated!**
