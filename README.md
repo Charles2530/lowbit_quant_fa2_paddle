@@ -166,11 +166,6 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 This is the PaddlePaddle implementation of the low-bit FlashAttention work. The PyTorch version is available at:
 - [SageAttention (THU-ML)](https://github.com/thu-ml/SageAttention)
 
-## 📧 Contact
-
-For questions or issues, please open an issue on GitHub or contact:
-- Yifu Ding: yifuding@buaa.edu.cn
-
 ---
 
 **Star ⭐ and Watch 👀 this repository to stay updated!**
