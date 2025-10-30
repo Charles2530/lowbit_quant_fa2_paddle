@@ -58,8 +58,8 @@ If you are familiar with the PyTorch version, this PaddlePaddle repo mirrors the
 ```python
 import paddle
 from src import (
-    sageattn_qk_int8_pv_fp16_triton,
-    sageattn_qk_int4_pv_fp16_triton,
+    lowbit_fa_qk_int8_pv_fp16_triton,
+    lowbit_fa_qk_int4_pv_fp16_triton,
 )
 
 # Create input tensors (FP16/BF16)
@@ -69,26 +69,19 @@ k = paddle.randn([batch_size, num_heads, seq_len, head_dim], dtype=paddle.float1
 v = paddle.randn([batch_size, num_heads, seq_len, head_dim], dtype=paddle.float16)
 
 # Run low-bit FlashAttention (INT8 QK^T + FP16 PV via Triton)
-output_int8 = sageattn_qk_int8_pv_fp16_triton(
+output_int8 = lowbit_fa_qk_int8_pv_fp16_triton(
     q=q, k=k, v=v,
     tensor_layout="HND",
     is_causal=False
 )
 
 # Run INT4 QK^T + FP16 PV via Triton
-output_int4 = sageattn_qk_int4_pv_fp16_triton(
+output_int4 = lowbit_fa_qk_int4_pv_fp16_triton(
     q=q, k=k, v=v,
     tensor_layout="HND",
     is_causal=False
 )
 ```
-
-### Available APIs
-
-- `sageattn_qk_int8_pv_fp16_triton` — INT8 QK^T + FP16 PV (Triton)
-- `sageattn_qk_int4_pv_fp16_triton` — INT4 QK^T + FP16 PV (Triton)
-- `sageattn_qk_int8_pv_fp8_cuda` — INT8 QK^T + FP8 PV (CUDA)
-- `sageattn_qk_int8_pv_fp16_cuda` — INT8 QK^T + FP16 PV (CUDA)
 
 ### Tensor Layout Options
 

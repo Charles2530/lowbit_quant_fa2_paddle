@@ -7,8 +7,8 @@ import paddle
 
 try:
     from src import (
-        sageattn_qk_int8_pv_fp16_triton,
-        sageattn_qk_int4_pv_fp16_triton,
+        lowbit_fa_qk_int8_pv_fp16_triton,
+        lowbit_fa_qk_int4_pv_fp16_triton,
     )
 except ModuleNotFoundError:
     # Allow running without installing the package
@@ -16,8 +16,8 @@ except ModuleNotFoundError:
     if REPO_ROOT not in sys.path:
         sys.path.append(REPO_ROOT)
     from src import (
-        sageattn_qk_int8_pv_fp16_triton,
-        sageattn_qk_int4_pv_fp16_triton,
+        lowbit_fa_qk_int8_pv_fp16_triton,
+        lowbit_fa_qk_int4_pv_fp16_triton,
     )
 
 
@@ -65,9 +65,9 @@ def reference_sdpa(q, k, v, layout, causal):
 
 def run_once(op, q, k, v, layout, causal):
     if op == "int8":
-        out = sageattn_qk_int8_pv_fp16_triton(q=q, k=k, v=v, tensor_layout=layout, is_causal=causal)
+        out = lowbit_fa_qk_int8_pv_fp16_triton(q=q, k=k, v=v, tensor_layout=layout, is_causal=causal)
     else:
-        out = sageattn_qk_int4_pv_fp16_triton(q=q, k=k, v=v, tensor_layout=layout, is_causal=causal)
+        out = lowbit_fa_qk_int4_pv_fp16_triton(q=q, k=k, v=v, tensor_layout=layout, is_causal=causal)
     return out
 
 

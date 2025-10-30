@@ -1094,3 +1094,12 @@ def sageattn_multi_precision(
             sm_scale=sm_scale,
             return_lse=return_lse,
         )
+
+# Aliases with new naming (preferred): keep old names for compatibility
+lowbit_fa_attn = sageattn
+lowbit_fa_varlen = sageattn_varlen
+lowbit_fa_multi_precision = sageattn_multi_precision
+lowbit_fa_qk_int8_pv_fp16_triton = sageattn_qk_int8_pv_fp16_triton
+lowbit_fa_qk_int8_pv_fp16_cuda = sageattn_qk_int8_pv_fp16_cuda
+lowbit_fa_qk_int8_pv_fp8_cuda = sageattn_qk_int8_pv_fp8_cuda
+lowbit_fa_qk_int4_pv_fp16_triton = sageattn_qk_int4_pv_fp16_triton
